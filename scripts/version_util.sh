@@ -123,14 +123,14 @@ function rename_branch() {
   local toBr=$2
   echo "Start from $GF_DEVELOP"
   checkout_branch $GF_DEVELOP -q
-  echo "Rename $fromBr -> $toBr"
-  git branch -m $fromBr $toBr
   if git ls-remote -q --exit-code --heads . $fromBr &> /dev/null; then
     echo "Delete remote $fromBr"
     git push origin :$fromBr
   else
     echo "No remote found."
   fi
+  echo "Rename $fromBr -> $toBr"
+  git branch -m $fromBr $toBr
   echo "Checkout new $toBr"
   git checkout -q $toBr
   git branch --unset-upstream &> /dev/null || true
