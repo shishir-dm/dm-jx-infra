@@ -236,6 +236,7 @@ function merge_release() {
   workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
   merge_source_into_target $workingBr $developBr
   merge_source_into_target $workingBr $masterBr
+  merge_source_into_target $masterBr $developBr
   delete_branch $workingBr
   tag_branch "$GF_MASTER"
 }
@@ -264,6 +265,7 @@ function merge_hotfix() {
   fi
   merge_source_into_target $workingBr $developBr
   merge_source_into_target $workingBr $masterBr
+  merge_source_into_target $masterBr $developBr
   delete_branch $workingBr
   tag_branch "$GF_MASTER"
 }
