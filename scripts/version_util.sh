@@ -45,7 +45,7 @@ function prereqs() {
   elif gitversion -h &> /dev/null; then
     GITVERSION_CMD="gitversion"
   elif docker info &> /dev/null; then
-    GITVERSION_CMD="docker run --rm -v ${ROOT}:/repo gittools/gitversion:5.0.0-linux /repo"
+    GITVERSION_CMD="docker run --rm -v ${ROOT}:/repo gittools/gitversion:4.0.1-beta1-65-linux-debian-net472 /repo"
   else
     die "No gitversion and no docker "
   fi
