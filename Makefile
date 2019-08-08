@@ -5,7 +5,7 @@ ROOT=$(shell git rev-parse --show-toplevel)
 
 help:
 
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-19s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target> [BATCH_MODE=1] [DRY_RUN=1]\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-19s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 empty_commit:  ## Adds a empty commit to the current branch
 

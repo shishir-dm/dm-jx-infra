@@ -19,9 +19,14 @@ function hotfix_semver() {
 }
 
 function confirm () {
+    local msg="${1:-Are you sure?} [Y/n]"
     # call with a prompt string or use a default
     local default_answer='Y'
-    read -p ">>>>>>>> ${1:-Are you sure?} [Y/n]" default_answer_input
+    if (( $BATCH_MODE )); then
+      echo "[BATCH_MODE] $msg" >&2
+    else
+      read -p "$msg" default_answer_input
+    fi
     default_answer=${default_answer_input:-$default_answer}
     #[ -n "$REPLY" ] && echo    # (optional) move to a new line
     if [[ $default_answer =~ ^[Nn]$ ]]; then
@@ -60,7 +65,7 @@ function prereqs() {
 
 function run_cmd() {
   prereqs
-  ${GITVERSION_CMD} $@
+  ${GITVERSION_CMD} "$@"
 }
 
 # use it method to get a particular field from the returned JSON string
@@ -125,23 +130,23 @@ function rename_branch() {
   checkout_branch $GF_DEVELOP -q
   if git ls-remote -q --exit-code --heads . $fromBr &> /dev/null; then
     echo "Delete remote $fromBr"
-    git push origin :$fromBr
+    gitCmd push origin :$fromBr
   else
     echo "No remote found."
   fi
   echo "Rename $fromBr -> $toBr"
-  git branch -m $fromBr $toBr
+  gitCmd branch -m $fromBr $toBr
   echo "Checkout new $toBr"
-  git checkout -q $toBr
-  git branch --unset-upstream &> /dev/null || true
+  gitCmd checkout -q $toBr
+  gitCmd branch --unset-upstream &> /dev/null || true
   echo "Push remote $toBr"
-  git push --set-upstream origin $toBr
+  gitCmd push --set-upstream origin $toBr
 }
 
 function rename_hotfix() {
   local workingBr targetBranch
   workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
-  read -p "New hotfix branch [$workingBr]: " targetBranch
+  targetBranch=$(readValue "New hotfix branch [$workingBr]: ")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   hotfix_semver "$targetBranch"
   rename_branch "$workingBr" "$targetBranch"
@@ -150,46 +155,63 @@ function rename_hotfix() {
 function rename_release() {
   local workingBr targetBranch
   workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
-  read -p "New release branch [$workingBr]: " targetBranch
+  targetBranch=$(readValue "New release branch [$workingBr]: ")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   release_semver "$targetBranch"
   rename_branch "$workingBr" "$targetBranch"
 }
 
+function gitCmd() {
+  if (( $DRY_RUN )); then
+    echo "DRY_RUN: git $@"
+  else
+    git "$@"
+  fi
+}
+
+function readValue() {
+  local msg=$1
+  if (( $BATCH_MODE )); then
+    echo "[BATCH_MODE] $msg" >&2
+  else
+    read -p "$msg" returnVal
+  fi
+  echo -n "${returnVal:-}"
+}
 
 function create_branch() {
   local sourceBranch=$1
   local targetBranch=$2
   local regexPrefix=$3
-  local branchPoint
+  local sourceBranchInput targetBranchInput branchPointInput branchPoint
 
   # get input vars
-  read -p "Source branch [$sourceBranch]: " sourceBranchInput
+  sourceBranchInput=$(readValue "Source branch [$sourceBranch]: ")
   sourceBranch=${sourceBranchInput:-$sourceBranch}
-  read -p "Target branch [$targetBranch]: " targetBranchInput
+  targetBranchInput=$(readValue "Target branch [$targetBranch]: ")
   targetBranch=${targetBranchInput:-$targetBranch}
   test_semver "$targetBranch" $regexPrefix
   confirm "Create branch '$targetBranch' from source '$sourceBranch'"
-
   # check for custom commit
   checkout_branch $sourceBranch
   branchPoint=$(git rev-parse --short HEAD)
   if [[ "$targetBranch" =~ release* ]]; then
     echo "Listing last 10 commits."
     git --no-pager log --oneline -n 10
-    read -p "Commit to branch from [$branchPoint]: " branchPointInput
-    if [[ "$branchPointInput" != "$branchPoint" ]]; then
+    branchPointInput=$(readValue "Commit to branch from [$branchPoint]: ")
+    branchPointInput=${branchPointInput:-$branchPoint}
+    if [[ "${branchPointInput:-}" != "$branchPoint" ]]; then
       echo "Checking out from commit '$branchPointInput'"
-      git checkout -b $targetBranch $branchPointInput
+      gitCmd checkout -b $targetBranch $branchPointInput
     else
       echo "Checking out from HEAD"
-      git checkout -b $targetBranch
+      gitCmd checkout -b $targetBranch
     fi
   else
     echo "Checking out from HEAD"
-    git checkout -b $targetBranch
+    gitCmd checkout -b $targetBranch
   fi
-  git push --set-upstream origin $targetBranch
+  gitCmd push --set-upstream origin $targetBranch
 }
 
 function merge_source_into_target() {
@@ -198,15 +220,15 @@ function merge_source_into_target() {
   confirm "Will merge release '$source' into '$target'"
   checkout_branch $source
   checkout_branch $target
-  git merge --no-ff $source -m "Merge branch '$source'"
-  git push origin $target
+  gitCmd merge --no-ff $source -m "Merge branch '$source'"
+  gitCmd push origin $target
 }
 
 function delete_branch() {
   local branch=$1
   confirm "Will delete branch '$branch' both locally and remote."
-  git branch -d $branch
-  git push origin :$branch
+  gitCmd branch -d $branch
+  gitCmd push origin :$branch
 }
 
 function create_release() {
@@ -272,23 +294,23 @@ function merge_hotfix() {
 
 function tag_branch() {
   local workingBr=$1
-  local tag
+  local tag tagInput
   workingBr=$(ensure_single_branch "$workingBr" true)
   checkout_branch $workingBr
   tag="v$(run_cmd /showvariable SemVer)"
-  read -p "New tag [$tag]: " tagInput
+  tagInput=$(readValue "New tag [$tag]: ")
   tag=${tagInput:-$tag}
   test_semver "$tag" v
   confirm "Will tag branch '$workingBr' with '$tag'"
-  git tag -am "Add tag '$tag' (performed by $USER)" $tag
-  git push origin $tag
+  gitCmd tag -am "Add tag '$tag' (performed by $USER)" $tag
+  gitCmd push origin $tag
 }
 
 function empty_commit() {
   local currentBr dateStr
   currentBr=$(git symbolic-ref --short HEAD)
   dateStr=$(date '+%Y-%m-%d_%H:%M:%S')
-  git commit --allow-empty -m "Empty commit at $dateStr to '$currentBr'"
+  gitCmd commit --allow-empty -m "Empty commit at $dateStr to '$currentBr'"
 }
 
 function finish {
@@ -311,43 +333,46 @@ GF_MASTER="master"
 GF_DEVELOP='develop'
 GF_RELEASE_PATTERN='release-*'
 GF_HOTFIX_PATTERN='hotfix-*'
+BATCH_MODE=${BATCH_MODE:-0}
+DRY_RUN=${DRY_RUN:-0}
+
 
 if [[ $ARG == 'prereqs' ]]; then
   prereqs
 elif [[ $ARG == 'run' ]]; then
-  run_cmd $@
+  run_cmd "$@"
 elif [[ $ARG == 'f' ]]; then
   get_field ${1:-}
 elif [[ $ARG == 'create_release' ]]; then
   ensure_pristine_workspace
-  create_release $@
+  create_release "$@"
 elif [[ $ARG == 'rename_release' ]]; then
   ensure_pristine_workspace
-  rename_release $@
+  rename_release "$@"
 elif [[ $ARG == 'rename_hotfix' ]]; then
   ensure_pristine_workspace
-  rename_hotfix $@
+  rename_hotfix "$@"
 elif [[ $ARG == 'tag_release' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_RELEASE_PATTERN" $@
+  tag_branch "$GF_RELEASE_PATTERN" "$@"
 elif [[ $ARG == 'tag_master' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_MASTER" $@
+  tag_branch "$GF_MASTER" "$@"
 elif [[ $ARG == 'create_hotfix' ]]; then
   ensure_pristine_workspace
-  create_hotfix $@
+  create_hotfix "$@"
 elif [[ $ARG == 'merge_release' ]]; then
   ensure_pristine_workspace
-  merge_release $@
+  merge_release "$@"
 elif [[ $ARG == 'merge_hotfix' ]]; then
   ensure_pristine_workspace
-  merge_hotfix $@
+  merge_hotfix "$@"
 elif [[ $ARG == 'status' ]]; then
   ensure_pristine_workspace
-  status $@
+  status "$@"
 elif [[ $ARG == 'empty_commit' ]]; then
   ensure_pristine_workspace_light
-  empty_commit $@
+  empty_commit "$@"
 else
   die "method '$ARG' not found"
 fi
