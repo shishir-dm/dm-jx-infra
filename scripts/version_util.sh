@@ -65,7 +65,7 @@ function prereqs() {
 
 function run_cmd() {
   prereqs
-  ${GITVERSION_CMD} $@
+  ${GITVERSION_CMD} "$@"
 }
 
 # use it method to get a particular field from the returned JSON string
@@ -165,7 +165,7 @@ function gitCmd() {
   if (( $DRY_RUN )); then
     echo "DRY_RUN: git $@"
   else
-    git $@
+    git "$@"
   fi
 }
 
@@ -340,39 +340,39 @@ DRY_RUN=${DRY_RUN:-0}
 if [[ $ARG == 'prereqs' ]]; then
   prereqs
 elif [[ $ARG == 'run' ]]; then
-  run_cmd $@
+  run_cmd "$@"
 elif [[ $ARG == 'f' ]]; then
   get_field ${1:-}
 elif [[ $ARG == 'create_release' ]]; then
   ensure_pristine_workspace
-  create_release $@
+  create_release "$@"
 elif [[ $ARG == 'rename_release' ]]; then
   ensure_pristine_workspace
-  rename_release $@
+  rename_release "$@"
 elif [[ $ARG == 'rename_hotfix' ]]; then
   ensure_pristine_workspace
-  rename_hotfix $@
+  rename_hotfix "$@"
 elif [[ $ARG == 'tag_release' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_RELEASE_PATTERN" $@
+  tag_branch "$GF_RELEASE_PATTERN" "$@"
 elif [[ $ARG == 'tag_master' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_MASTER" $@
+  tag_branch "$GF_MASTER" "$@"
 elif [[ $ARG == 'create_hotfix' ]]; then
   ensure_pristine_workspace
-  create_hotfix $@
+  create_hotfix "$@"
 elif [[ $ARG == 'merge_release' ]]; then
   ensure_pristine_workspace
-  merge_release $@
+  merge_release "$@"
 elif [[ $ARG == 'merge_hotfix' ]]; then
   ensure_pristine_workspace
-  merge_hotfix $@
+  merge_hotfix "$@"
 elif [[ $ARG == 'status' ]]; then
   ensure_pristine_workspace
-  status $@
+  status "$@"
 elif [[ $ARG == 'empty_commit' ]]; then
   ensure_pristine_workspace_light
-  empty_commit $@
+  empty_commit "$@"
 else
   die "method '$ARG' not found"
 fi
