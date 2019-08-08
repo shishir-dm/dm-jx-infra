@@ -1,3 +1,3 @@
-# node 
+# GitVersion Versioning Tool 
 
-Simple Hello World that listens on localhost:8080
+Makefile and scripts to help follow the gitflow release process like a boss.
