@@ -235,6 +235,7 @@ function create_release() {
   local targetVersion
   ensure_single_branch "$GF_DEVELOP"
   ensure_no_branch "$GF_RELEASE_PATTERN"
+  checkout_branch "$GF_DEVELOP" '-q'
   targetVersion=$(run_cmd /showvariable MajorMinorPatch)
   create_branch "$GF_DEVELOP" "release-${targetVersion}" release-
 }
@@ -243,7 +244,7 @@ function create_hotfix() {
   local major minor patch targetVersion
   ensure_single_branch "$GF_MASTER"
   ensure_no_branch "$GF_HOTFIX_PATTERN"
-  git checkout "$GF_MASTER" -q
+  checkout_branch "$GF_MASTER" '-q'
   major=$(run_cmd /showvariable Major)
   minor=$(run_cmd /showvariable Minor)
   patch=$(run_cmd /showvariable Patch)
