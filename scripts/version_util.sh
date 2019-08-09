@@ -7,7 +7,7 @@ function die() { echo "$@" 1>&2 ; exit 1; }
 function dieGracefully() { echo "$@" 1>&2 ; exit 0; }
 
 function test_semver() {
-  [[ $1 =~ ^${2}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} ]] || die "Value '$1' does not match ${2}x.x.x."
+  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} ]] || die "Value '$1' does not match ${2:-}x.x.x."
 }
 
 function release_semver() {
@@ -16,6 +16,10 @@ function release_semver() {
 
 function hotfix_semver() {
   test_semver "$1" hotfix-
+}
+
+function version_gt() {
+  test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"
 }
 
 function confirm () {
@@ -146,24 +150,28 @@ function rename_branch() {
 function rename_hotfix() {
   local workingBr targetBranch
   workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
-  targetBranch=$(readValue "New hotfix branch [$workingBr]: ")
+  [ -n "${TARGET_VERSION:-}" ] && targetBranch="hotfix-$TARGET_VERSION" || targetBranch="$workingBr"
+  targetBranch=$(readValue "New hotfix branch [$targetBranch]: ")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   hotfix_semver "$targetBranch"
+  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
   rename_branch "$workingBr" "$targetBranch"
 }
 
 function rename_release() {
   local workingBr targetBranch
   workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
-  targetBranch=$(readValue "New release branch [$workingBr]: ")
+  [ -n "${TARGET_VERSION:-}" ] && targetBranch="release-$TARGET_VERSION" || targetBranch="$workingBr"
+  targetBranch=$(readValue "New release branch [$targetBranch]: ")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   release_semver "$targetBranch"
+  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
   rename_branch "$workingBr" "$targetBranch"
 }
 
 function gitCmd() {
   if (( $DRY_RUN )); then
-    echo "DRY_RUN: git $@"
+    echo "[DRY_RUN] git $@"
   else
     git "$@"
   fi
@@ -179,11 +187,38 @@ function readValue() {
   echo -n "${returnVal:-}"
 }
 
+function determine_branch_or_tag_point() {
+  local targetBranch=$1
+  local branchOrTagPointInput latestKnownTagOnBranch
+  # check for custom sha from TARGET_SHA
+  if [ -n "${TARGET_SHA}" ]; then
+    echo "TARGET_SHA found. Replacing default branch/tag point."
+    branchOrTagPoint=$(git rev-parse --short "$TARGET_SHA")
+  else
+    branchOrTagPoint=$(git rev-parse --short HEAD)
+  fi
+  # check for custom sha from user input
+  if [[ "$targetBranch" =~ release* ]]; then
+    echo "Listing last 10 commits."
+    git --no-pager log --oneline -n 10
+    branchOrTagPointInput=$(readValue "Commit to branch from [$branchOrTagPoint]: ")
+    branchOrTagPoint=${branchOrTagPointInput:-$branchOrTagPoint}
+  fi
+  # finally ensure the sha is after the latest tag (if the branch has a tag)
+  if git describe --abbrev=0 --tags &> /dev/null; then
+    latestKnownTagOnBranch=$(git describe --abbrev=0 --tags)
+    git merge-base --is-ancestor $latestKnownTagOnBranch $branchOrTagPoint \
+      || die "Something strange going on: branch/tag point '$branchOrTagPoint' is older than the latest known tag '$latestKnownTagOnBranch'."
+  else
+    echo "No tags found on this branch so far. Continuing..."
+  fi
+}
+
 function create_branch() {
   local sourceBranch=$1
   local targetBranch=$2
   local regexPrefix=$3
-  local sourceBranchInput targetBranchInput branchPointInput branchPoint
+  local sourceBranchInput targetBranchInput branchOrTagPoint
 
   # get input vars
   sourceBranchInput=$(readValue "Source branch [$sourceBranch]: ")
@@ -192,25 +227,10 @@ function create_branch() {
   targetBranch=${targetBranchInput:-$targetBranch}
   test_semver "$targetBranch" $regexPrefix
   confirm "Create branch '$targetBranch' from source '$sourceBranch'"
-  # check for custom commit
   checkout_branch $sourceBranch
-  branchPoint=$(git rev-parse --short HEAD)
-  if [[ "$targetBranch" =~ release* ]]; then
-    echo "Listing last 10 commits."
-    git --no-pager log --oneline -n 10
-    branchPointInput=$(readValue "Commit to branch from [$branchPoint]: ")
-    branchPointInput=${branchPointInput:-$branchPoint}
-    if [[ "${branchPointInput:-}" != "$branchPoint" ]]; then
-      echo "Checking out from commit '$branchPointInput'"
-      gitCmd checkout -b $targetBranch $branchPointInput
-    else
-      echo "Checking out from HEAD"
-      gitCmd checkout -b $targetBranch
-    fi
-  else
-    echo "Checking out from HEAD"
-    gitCmd checkout -b $targetBranch
-  fi
+  determine_branch_or_tag_point $sourceBranch
+  echo "Checking out from commit '$branchOrTagPoint'"
+  gitCmd checkout -b $targetBranch $branchOrTagPoint
   gitCmd push --set-upstream origin $targetBranch
 }
 
@@ -233,10 +253,13 @@ function delete_branch() {
 
 function create_release() {
   local targetVersion
+  ensure_single_branch "$GF_MASTER"
   ensure_single_branch "$GF_DEVELOP"
   ensure_no_branch "$GF_RELEASE_PATTERN"
   checkout_branch "$GF_DEVELOP" '-q'
   targetVersion=$(run_cmd /showvariable MajorMinorPatch)
+  targetVersion=${TARGET_VERSION:-$targetVersion}
+  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
   create_branch "$GF_DEVELOP" "release-${targetVersion}" release-
 }
 
@@ -249,6 +272,8 @@ function create_hotfix() {
   minor=$(run_cmd /showvariable Minor)
   patch=$(run_cmd /showvariable Patch)
   targetVersion="${major}.${minor}.$(( $patch + 1 ))"
+  targetVersion=${TARGET_VERSION:-$targetVersion}
+  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
   create_branch "$GF_MASTER" "hotfix-${targetVersion}" hotfix-
 }
 
@@ -257,11 +282,42 @@ function merge_release() {
   masterBr=$(ensure_single_branch "$GF_MASTER" true)
   developBr=$(ensure_single_branch "$GF_DEVELOP" true)
   workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
+  # release version has to be greater than master
+  ensure_source_version_gt_target_version $workingBr $masterBr
   merge_source_into_target $workingBr $developBr
   merge_source_into_target $workingBr $masterBr
   merge_source_into_target $masterBr $developBr
   delete_branch $workingBr
   tag_branch "$GF_MASTER"
+}
+
+function ensure_target_version_gt_branch_version() {
+  local targetVersion=$1
+  local branch=$2
+  local branchVersion
+  test_semver $targetVersion
+  checkout_branch $branch -q
+  branchVersion=$(run_cmd /showvariable FullSemVer)
+  version_gt $targetVersion $branchVersion || die "Target version supplied is lower than the version on '$branch':
+  $branchVersion <- branch ($branch)
+  vs
+  $targetVersion <- target
+  "
+}
+
+function ensure_source_version_gt_target_version() {
+  local source=$1
+  local target=$2
+  local sourceVersion targetVersion
+  checkout_branch $source -q
+  sourceVersion=$(run_cmd /showvariable FullSemVer)
+  checkout_branch $target -q
+  targetVersion=$(run_cmd /showvariable FullSemVer)
+  version_gt $sourceVersion $targetVersion || die "Source branch version is lower than target branch version:
+  $sourceVersion <- source ($source)
+  vs
+  $targetVersion <- target ($target)
+  "
 }
 
 function status() {
@@ -283,6 +339,8 @@ function merge_hotfix() {
   developBr=$(ensure_single_branch "$GF_DEVELOP" true)
   workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
   releaseBr=$(search_for_branch "$GF_RELEASE_PATTERN" true)
+  # hotfix version has to be greater than master
+  ensure_source_version_gt_target_version $hotfixBr $masterBr
   if [ -n "$releaseBr" ]; then
     merge_source_into_target $workingBr $releaseBr
   fi
@@ -295,13 +353,16 @@ function merge_hotfix() {
 
 function tag_branch() {
   local workingBr=$1
-  local tag tagInput
+  local tag tagInput tagVersion
   workingBr=$(ensure_single_branch "$workingBr" true)
   checkout_branch $workingBr
-  tag="v$(run_cmd /showvariable SemVer)"
+  determine_branch_or_tag_point $workingBr
+  tagVersion="$(run_cmd /showvariable SemVer)"
+  tag="v${TARGET_VERSION:-$tagVersion}"
   tagInput=$(readValue "New tag [$tag]: ")
   tag=${tagInput:-$tag}
   test_semver "$tag" v
+  ensure_target_version_gt_branch_version "${tag:1}" $workingBr # ${tag:1} to remove the prefixing 'v'
   confirm "Will tag branch '$workingBr' with '$tag'"
   gitCmd tag -am "Add tag '$tag' (performed by $USER)" $tag
   gitCmd push origin $tag
@@ -336,6 +397,11 @@ GF_RELEASE_PATTERN='release-*'
 GF_HOTFIX_PATTERN='hotfix-*'
 BATCH_MODE=${BATCH_MODE:-0}
 DRY_RUN=${DRY_RUN:-0}
+TARGET_VERSION=${TARGET_VERSION:-}
+TARGET_SHA=${TARGET_SHA:-}
+DEBUG=${DEBUG:-0}
+(( $DEBUG )) && { echo "DEBUG activated. Using 'set -x'..."; set -x; }
+
 
 
 if [[ $ARG == 'prereqs' ]]; then
