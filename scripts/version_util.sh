@@ -297,7 +297,7 @@ function ensure_target_version_gt_branch_version() {
   local branchVersion
   test_semver $targetVersion
   checkout_branch $branch -q
-  branchVersion=$(run_cmd /showvariable FullSemVer)
+  branchVersion=$(run_cmd /showvariable SemVer)
   version_gt $targetVersion $branchVersion || die "Target version supplied is lower than the version on '$branch':
   $branchVersion <- branch ($branch)
   vs
