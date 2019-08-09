@@ -19,7 +19,14 @@ function hotfix_semver() {
 }
 
 function version_gt() {
-  test "$(printf '%s\n' "$@" | sort -V | head -n 1)" != "$1"
+  local v1=$1
+  local v2=$2
+  local eq=${3:-}
+  if [[ "$eq" == "eq" ]] && [[ "$v1" == "$v2" ]]; then
+    return
+  else
+    test "$(printf '%s\n%s\n' "$v1" "$v2" | sort -V | head -n 1)" != "$v1"
+  fi
 }
 
 function confirm () {
@@ -294,11 +301,12 @@ function merge_release() {
 function ensure_target_version_gt_branch_version() {
   local targetVersion=$1
   local branch=$2
+  local eq=${3:-}
   local branchVersion
   test_semver $targetVersion
   checkout_branch $branch -q
   branchVersion=$(run_cmd /showvariable SemVer)
-  version_gt $targetVersion $branchVersion || die "Target version supplied is lower than the version on '$branch':
+  version_gt "$targetVersion" "$branchVersion" "$eq" || die "Target version supplied is lower than the version on '$branch':
   $branchVersion <- branch ($branch)
   vs
   $targetVersion <- target
@@ -362,9 +370,11 @@ function tag_branch() {
   tagInput=$(readValue "New tag [$tag]: ")
   tag=${tagInput:-$tag}
   test_semver "$tag" v
-  ensure_target_version_gt_branch_version "${tag:1}" $workingBr # ${tag:1} to remove the prefixing 'v'
+  # ${tag:1} to remove the prefixing 'v'
+  # Add 'eq' because the SemVer could be equal even if tag doesn't exist yet.
+  ensure_target_version_gt_branch_version "${tag:1}" "$workingBr" "eq"
   confirm "Will tag branch '$workingBr' with '$tag'"
-  gitCmd tag -am "Add tag '$tag' (performed by $USER)" $tag
+  gitCmd tag -am "Add tag '$tag' (performed by $USER)" $tag $branchOrTagPoint
   gitCmd push origin $tag
 }
 
