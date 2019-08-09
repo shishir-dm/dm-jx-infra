@@ -160,7 +160,7 @@ function rename_hotfix() {
   local workingBr targetBranch
   workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
   [ -n "${TARGET_VERSION:-}" ] && targetBranch="hotfix-$TARGET_VERSION" || targetBranch="$workingBr"
-  targetBranch=$(readValue "New hotfix branch [$targetBranch]: ")
+  targetBranch=$(readValue "New hotfix branch [$targetBranch]: " "$targetBranch")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   hotfix_semver "$targetBranch"
   ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
@@ -171,7 +171,7 @@ function rename_release() {
   local workingBr targetBranch
   workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
   [ -n "${TARGET_VERSION:-}" ] && targetBranch="release-$TARGET_VERSION" || targetBranch="$workingBr"
-  targetBranch=$(readValue "New release branch [$targetBranch]: ")
+  targetBranch=$(readValue "New release branch [$targetBranch]: " "$targetBranch")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   release_semver "$targetBranch"
   ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
@@ -188,12 +188,13 @@ function gitCmd() {
 
 function readValue() {
   local msg=$1
+  local defaultVal=$2
   if (( $BATCH_MODE )); then
     echo "[BATCH_MODE] $msg" >&2
   else
     read -p "$msg" returnVal
   fi
-  echo -n "${returnVal:-}"
+  echo -n "${returnVal:-$defaultVal}"
 }
 
 function determine_branch_or_tag_point() {
@@ -210,7 +211,7 @@ function determine_branch_or_tag_point() {
   if [[ "$targetBranch" =~ release* ]]; then
     echo "Listing last 10 commits."
     git --no-pager log --oneline -n 10
-    branchOrTagPointInput=$(readValue "Commit to branch from [$branchOrTagPoint]: ")
+    branchOrTagPointInput=$(readValue "Commit to branch from [$branchOrTagPoint]: " "$branchOrTagPoint")
     branchOrTagPoint=${branchOrTagPointInput:-$branchOrTagPoint}
   fi
   # finally ensure the sha is after the latest tag (if the branch has a tag)
@@ -230,9 +231,9 @@ function create_branch() {
   local sourceBranchInput targetBranchInput branchOrTagPoint
 
   # get input vars
-  sourceBranchInput=$(readValue "Source branch [$sourceBranch]: ")
+  sourceBranchInput=$(readValue "Source branch [$sourceBranch]: " "$sourceBranch")
   sourceBranch=${sourceBranchInput:-$sourceBranch}
-  targetBranchInput=$(readValue "Target branch [$targetBranch]: ")
+  targetBranchInput=$(readValue "Target branch [$targetBranch]: " "$targetBranch")
   targetBranch=${targetBranchInput:-$targetBranch}
   test_semver "$targetBranch" $regexPrefix
   confirm "Create branch '$targetBranch' from source '$sourceBranch'"
@@ -369,7 +370,7 @@ function tag_branch() {
   determine_branch_or_tag_point $workingBr
   tagVersion="$(run_cmd /showvariable SemVer)"
   tag="v${TARGET_VERSION:-$tagVersion}"
-  tagInput=$(readValue "New tag [$tag]: ")
+  tagInput=$(readValue "New tag [$tag]: " "$tag")
   tag=${tagInput:-$tag}
   test_semver "$tag" v
   # ${tag:1} to remove the prefixing 'v'
