@@ -344,20 +344,20 @@ function status() {
 }
 
 function merge_hotfix() {
-  local masterBr workingBr
+  local masterBr developBr releaseBr hotfixBr
   masterBr=$(ensure_single_branch "$GF_MASTER" true)
   developBr=$(ensure_single_branch "$GF_DEVELOP" true)
-  workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
+  hotfixBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
   releaseBr=$(search_for_branch "$GF_RELEASE_PATTERN" true)
   # hotfix version has to be greater than master
   ensure_source_version_gt_target_version $hotfixBr $masterBr
   if [ -n "$releaseBr" ]; then
-    merge_source_into_target $workingBr $releaseBr
+    merge_source_into_target $hotfixBr $releaseBr
   fi
-  merge_source_into_target $workingBr $developBr
-  merge_source_into_target $workingBr $masterBr
+  merge_source_into_target $hotfixBr $developBr
+  merge_source_into_target $hotfixBr $masterBr
   merge_source_into_target $masterBr $developBr
-  delete_branch $workingBr
+  delete_branch $hotfixBr
   tag_branch "$GF_MASTER"
 }
 
