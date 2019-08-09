@@ -5,7 +5,7 @@ ROOT=$(shell git rev-parse --show-toplevel)
 
 help:
 
-	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target> [BATCH_MODE=1] [DRY_RUN=1]\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-19s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
+	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target> [BATCH_MODE=1] [DRY_RUN=1] [OPTS...]\033[0m\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-19s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
 
 empty_commit:  ## Adds a empty commit to the current branch
 
@@ -15,7 +15,7 @@ semver:  ## Outputs FullSemVer of the current branch according to gitversion
 
 	@$(ROOT)/scripts/version_util.sh f FullSemVer
 
-create_release:  ## Bumps minor version and creates a release branch
+create_release:  ## Bumps minor version and creates a release branch --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
@@ -27,11 +27,11 @@ merge_release:  ## Merges release branch to develop and master
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-tag_release:  ## Tags the HEAD of the release branch with the SemVer
+tag_release:  ## Tags the release branch with the SemVer          --> (OPTS: TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-create_hotfix:  ## Bumps hotfix version and creates a hotfix branch
+create_hotfix:  ## Bumps hotfix version and creates a hotfix branch --> (OPTS: TARGET_VERSION=x.x.x)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
@@ -43,7 +43,7 @@ merge_hotfix:  ## Merges hotfix branch to master
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-tag_master:  ## Tags the HEAD of the release branch with the SemVer
+tag_master:  ## Tags the HEAD of the master branch with the SemVer
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
