@@ -163,7 +163,7 @@ function rename_hotfix() {
   targetBranch=$(readValue "New hotfix branch [$targetBranch]: " "$targetBranch")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   hotfix_semver "$targetBranch"
-  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
+  ensure_target_version_gt_branch_version "${targetBranch//hotfix-/}" $GF_MASTER
   rename_branch "$workingBr" "$targetBranch"
 }
 
@@ -174,7 +174,7 @@ function rename_release() {
   targetBranch=$(readValue "New release branch [$targetBranch]: " "$targetBranch")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   release_semver "$targetBranch"
-  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
+  ensure_target_version_gt_branch_version "${targetBranch//release-/}" $GF_MASTER
   rename_branch "$workingBr" "$targetBranch"
 }
 
