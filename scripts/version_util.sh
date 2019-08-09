@@ -416,6 +416,10 @@ DEBUG=${DEBUG:-0}
 (( $DEBUG )) && { echo "DEBUG activated. Using 'set -x'..."; set -x; }
 
 
+# Add the possibility to use this script externally for other projects
+PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel)}"
+[ -r "${PROJECT_ROOT}/.version_util.overrides" ] && . "${PROJECT_ROOT}/.version_util.overrides"
+cd $PROJECT_ROOT
 
 if [[ $ARG == 'prereqs' ]]; then
   prereqs
