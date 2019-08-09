@@ -7,7 +7,7 @@ function die() { echo "$@" 1>&2 ; exit 1; }
 function dieGracefully() { echo "$@" 1>&2 ; exit 0; }
 
 function test_semver() {
-  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3} ]] || die "Value '$1' does not match ${2:-}x.x.x."
+  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-beta\.[0-9]{1,3})*$ ]] || die "Value '$1' does not match ${2:-}x.x.x."
 }
 
 function release_semver() {
@@ -25,7 +25,9 @@ function version_gt() {
   if [[ "$eq" == "eq" ]] && [[ "$v1" == "$v2" ]]; then
     return
   else
-    test "$(printf '%s\n%s\n' "$v1" "$v2" | sort -V | head -n 1)" != "$v1"
+    # we are only interested in the Major Minor Patch values
+    # strip away any '-alpha' or '-beta' with ${v1//-*} and ${v2//-*}
+    test "$(printf '%s\n%s\n' "${v1//-*}" "${v2//-*}" | sort -V | head -n 1)" != "${v1//-*}"
   fi
 }
 
@@ -318,9 +320,9 @@ function ensure_source_version_gt_target_version() {
   local target=$2
   local sourceVersion targetVersion
   checkout_branch $source -q
-  sourceVersion=$(run_cmd /showvariable FullSemVer)
+  sourceVersion=$(run_cmd /showvariable SemVer)
   checkout_branch $target -q
-  targetVersion=$(run_cmd /showvariable FullSemVer)
+  targetVersion=$(run_cmd /showvariable SemVer)
   version_gt $sourceVersion $targetVersion || die "Source branch version is lower than target branch version:
   $sourceVersion <- source ($source)
   vs
