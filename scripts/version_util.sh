@@ -251,7 +251,11 @@ function merge_source_into_target() {
   checkout_branch $source
   checkout_branch $target
   if [[ "$target" == "$GF_DEVELOP" ]]; then
-    gitCmd merge $source -m "Merge branch '$source'"
+    local fromHash toHash
+    toHash=$(git show-ref -s --verify "refs/heads/$source")
+    fromHash=$(git merge-base "$source" "$target")
+    gitCmd cherry-pick --allow-empty --keep-redundant-commits --commit -x "$fromHash".."$toHash"    
+    gitCmd push
   else
     gitCmd merge --no-ff $source -m "Merge branch '$source'"
   fi
@@ -300,7 +304,6 @@ function merge_release() {
   ensure_source_version_gt_target_version $workingBr $masterBr
   merge_source_into_target $workingBr $developBr
   merge_source_into_target $workingBr $masterBr
-  #merge_source_into_target $masterBr $developBr
   delete_branch $workingBr
   tag_branch "$GF_MASTER"
   tag_branch "$GF_DEVELOP"
@@ -354,15 +357,10 @@ function merge_hotfix() {
   masterBr=$(ensure_single_branch "$GF_MASTER" true)
   developBr=$(ensure_single_branch "$GF_DEVELOP" true)
   hotfixBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
-  releaseBr=$(search_for_branch "$GF_RELEASE_PATTERN" true)
   # hotfix version has to be greater than master
   ensure_source_version_gt_target_version $hotfixBr $masterBr
-  if [ -n "$releaseBr" ]; then
-    merge_source_into_target $hotfixBr $releaseBr
-  fi
   merge_source_into_target $hotfixBr $developBr
   merge_source_into_target $hotfixBr $masterBr
-  #merge_source_into_target $masterBr $developBr
   delete_branch $hotfixBr
   tag_branch "$GF_MASTER"
   tag_branch "$GF_DEVELOP"
