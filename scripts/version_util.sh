@@ -296,7 +296,7 @@ function merge_release() {
   ensure_source_version_gt_target_version $workingBr $masterBr
   merge_source_into_target $workingBr $developBr
   merge_source_into_target $workingBr $masterBr
-  merge_source_into_target $masterBr $developBr
+  #merge_source_into_target $masterBr $developBr
   delete_branch $workingBr
   tag_branch "$GF_MASTER"
 }
@@ -357,7 +357,7 @@ function merge_hotfix() {
   fi
   merge_source_into_target $hotfixBr $developBr
   merge_source_into_target $hotfixBr $masterBr
-  merge_source_into_target $masterBr $developBr
+  #merge_source_into_target $masterBr $developBr
   delete_branch $hotfixBr
   tag_branch "$GF_MASTER"
 }
