@@ -251,9 +251,14 @@ function merge_source_into_target() {
   checkout_branch $source
   checkout_branch $target
   if [[ "$target" == "$GF_DEVELOP" ]]; then
-    local fromHash toHash
+    local fromHash toHash mergeBaseTarget
+    if [[ "$source" == $GF_HOTFIX_PATTERN ]]; then
+      mergeBaseTarget="$GF_MASTER"
+    else
+      mergeBaseTarget="$target"
+    fi
     toHash=$(git show-ref -s --verify "refs/heads/$source")
-    fromHash=$(git merge-base "$source" "$target")
+    fromHash=$(git merge-base "$source" "$mergeBaseTarget")
     if [[ "$fromHash" != "$toHash" ]]; then
       gitCmd cherry-pick --allow-empty --keep-redundant-commits --commit -x "$fromHash".."$toHash"    
       gitCmd push
