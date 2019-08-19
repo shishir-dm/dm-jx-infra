@@ -31,6 +31,10 @@ tag_release:  ## Tags the release branch with the SemVer          --> (OPTS: TAR
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
+tag_develop:  ## Tags the develop branch with the SemVer          --> (OPTS: TARGET_SHA=...)
+
+	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
+
 create_hotfix:  ## Bumps hotfix version and creates a hotfix branch --> (OPTS: TARGET_VERSION=x.x.x)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
