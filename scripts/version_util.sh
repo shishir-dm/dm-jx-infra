@@ -250,7 +250,11 @@ function merge_source_into_target() {
   confirm "Will merge release '$source' into '$target'"
   checkout_branch $source
   checkout_branch $target
-  gitCmd merge --no-ff $source -m "Merge branch '$source'"
+  if [[ "$target" == "$GF_DEVELOP" ]]; then
+    gitCmd merge $source -m "Merge branch '$source'"
+  else
+    gitCmd merge --no-ff $source -m "Merge branch '$source'"
+  fi
   gitCmd push origin $target
 }
 
