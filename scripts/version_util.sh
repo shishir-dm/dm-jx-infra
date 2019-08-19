@@ -296,9 +296,10 @@ function merge_release() {
   ensure_source_version_gt_target_version $workingBr $masterBr
   merge_source_into_target $workingBr $developBr
   merge_source_into_target $workingBr $masterBr
-  #merge_source_into_target $masterBr $developBr
+  merge_source_into_target $masterBr $developBr
   delete_branch $workingBr
   tag_branch "$GF_MASTER"
+  tag_branch "$GF_DEVELOP"
 }
 
 function ensure_target_version_gt_branch_version() {
@@ -357,9 +358,10 @@ function merge_hotfix() {
   fi
   merge_source_into_target $hotfixBr $developBr
   merge_source_into_target $hotfixBr $masterBr
-  #merge_source_into_target $masterBr $developBr
+  merge_source_into_target $masterBr $developBr
   delete_branch $hotfixBr
   tag_branch "$GF_MASTER"
+  tag_branch "$GF_DEVELOP"
 }
 
 function tag_branch() {
@@ -436,6 +438,9 @@ elif [[ $ARG == 'rename_release' ]]; then
 elif [[ $ARG == 'rename_hotfix' ]]; then
   ensure_pristine_workspace
   rename_hotfix "$@"
+elif [[ $ARG == 'tag_develop' ]]; then
+  ensure_pristine_workspace
+  tag_branch "$GF_DEVELOP" "$@"
 elif [[ $ARG == 'tag_release' ]]; then
   ensure_pristine_workspace
   tag_branch "$GF_RELEASE_PATTERN" "$@"
