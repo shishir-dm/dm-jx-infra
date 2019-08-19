@@ -7,7 +7,7 @@ function die() { echo "$@" 1>&2 ; exit 1; }
 function dieGracefully() { echo "$@" 1>&2 ; exit 0; }
 
 function test_semver() {
-  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-beta\.[0-9]{1,3})*$ ]] || die "Value '$1' does not match ${2:-}x.x.x."
+  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-(alpha|beta)\.[0-9]{1,3})*$ ]] || die "Value '$1' does not match ${2:-}x.x.x."
 }
 
 function release_semver() {
