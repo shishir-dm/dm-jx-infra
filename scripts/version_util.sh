@@ -313,9 +313,9 @@ function merge_release() {
   ensure_source_version_gt_target_version $workingBr $masterBr
   merge_source_into_target $workingBr $developBr
   merge_source_into_target $workingBr $masterBr
-  delete_branch $workingBr
   tag_branch "$GF_MASTER"
   tag_branch "$GF_DEVELOP"
+  delete_branch $workingBr
 }
 
 function ensure_target_version_gt_branch_version() {
@@ -370,9 +370,9 @@ function merge_hotfix() {
   ensure_source_version_gt_target_version $hotfixBr $masterBr
   merge_source_into_target $hotfixBr $developBr
   merge_source_into_target $hotfixBr $masterBr
-  delete_branch $hotfixBr
   tag_branch "$GF_MASTER"
   tag_branch "$GF_DEVELOP"
+  delete_branch $hotfixBr
 }
 
 function tag_branch() {
