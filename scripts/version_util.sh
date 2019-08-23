@@ -260,7 +260,7 @@ function merge_source_into_target() {
     toHash=$(git show-ref -s --verify "refs/heads/$source")
     fromHash=$(git merge-base "$source" "$mergeBaseTarget")
     if [[ "$fromHash" != "$toHash" ]]; then
-      gitCmd cherry-pick --allow-empty --keep-redundant-commits --commit -x "$fromHash".."$toHash"    
+      gitCmd cherry-pick --allow-empty --keep-redundant-commits --commit -x "$fromHash".."$toHash"
       gitCmd push
     else
       echo "No changes to cherry-pick from '${source}' branch."
