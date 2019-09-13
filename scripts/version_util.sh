@@ -238,7 +238,7 @@ function create_branch() {
   test_semver "$targetBranch" $regexPrefix
   confirm "Create branch '$targetBranch' from source '$sourceBranch'"
   checkout_branch $sourceBranch
-  determine_branch_or_tag_point $sourceBranch
+  determine_branch_or_tag_point $targetBranch
   echo "Checking out from commit '$branchOrTagPoint'"
   gitCmd checkout -b $targetBranch $branchOrTagPoint
   gitCmd push --set-upstream origin $targetBranch
