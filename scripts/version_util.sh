@@ -308,6 +308,7 @@ function release_create() {
   targetVersion=${TARGET_VERSION:-$targetVersion}
   ensure_first_gt_second $targetVersion "${latestReleaseTag//v/}"
   create_branch "$GF_DEVELOP" "release-${targetVersion}" release-
+  develop_tag
 }
 
 function find_latest_release_tag() {
@@ -406,6 +407,10 @@ function tag_branch() {
   gitCmd push origin $tag
 }
 
+function develop_tag() {
+  tag_branch "$GF_DEVELOP"
+}
+
 function empty_commit() {
   local currentBr dateStr
   currentBr=$(git symbolic-ref --short HEAD)
@@ -468,7 +473,7 @@ elif [[ $ARG == 'hotfix_rename' ]]; then
   hotfix_rename "$@"
 elif [[ $ARG == 'develop_tag' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_DEVELOP" "$@"
+  develop_tag "$@"
 elif [[ $ARG == 'release_tag' ]]; then
   ensure_pristine_workspace
   tag_branch "$GF_RELEASE_PATTERN" "$@"
