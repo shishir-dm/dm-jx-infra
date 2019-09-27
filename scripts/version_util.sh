@@ -324,7 +324,7 @@ function create_pull_request() {
   local headBranch=$2
   local msg=${3:-"Merging '${headBranch}' into '${baseBranch}'."}
   hub --version &> /dev/null || die "The hub binary is not installed (see: https://hub.github.com/)"
-  hubCmd pull-request -b "${baseBranch}" -b "${headBranch}" -m "${msg}"
+  hubCmd pull-request -b "${baseBranch}" -h "${headBranch}" -m "${msg}"
 }
 
 function release_close() {
