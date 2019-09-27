@@ -25,11 +25,20 @@ function version_gt() {
   if [[ "$eq" == "eq" ]] && [[ "$v1" == "$v2" ]]; then
     return
   else
-    # we are only interested in the Major Minor Patch values
-    # strip away any '-alpha' or '-beta' with ${v1//-*} and ${v2//-*}
-    test "$(printf '%s\n%s\n' "${v1//-*}" "${v2//-*}" | sort -V | head -n 1)" != "${v1//-*}"
+    # tricking the sort -V by adding an extra '_' to the end of the version
+    # see: https://stackoverflow.com/a/40391207/1838659
+    printf '%s\n%s\n' "${v1}" "${v2}" | $SED '/-/!{s/$/_/}' > /dev/null || die "The sed command failed. You may be on MacOS and have either not installed gnu-sed, or the gsed binary is not on the PATH."
+    test "$(printf '%s\n%s\n' "${v1}" "${v2}" | $SED '/-/!{s/$/_/}' | sort -V | head -n 1)" != "${v1}"
   fi
 }
+
+# for testing purposes
+# version_gt v3.22.0-alpha.1 v3.22.0-beta.1 && echo y || echo n
+# version_gt v3.22.0-beta.1 v3.22.0-beta.1 && echo y || echo n
+# version_gt v3.22.0-beta.1 v3.22.0-beta.1 eq && echo y || echo n
+# version_gt v3.23.0-alpha.1 v3.22.0-beta.1 eq && echo y || echo n
+# version_gt v3.22.0 v3.22.0-beta.1 eq && echo y || echo n
+# exit
 
 function confirm () {
     local msg="${1:-Are you sure?} [Y/n]"
@@ -110,7 +119,7 @@ function ensure_pristine_workspace_light() {
 function ensure_single_branch() {
   local pattern=$1
   local branches
-  branches=$(git ls-remote --quiet origin "$pattern" | sed 's:.*/::g')
+  branches=$(git ls-remote --quiet origin "$pattern" | $SED 's:.*/::g')
   [ -n "$branches" ] || die "Remote branch(es) matching '$pattern' DOES NOT exist."
   (( $(grep -c . <<< "$branches") == 1 )) || { echo -e "Branches found:\n$branches"; die "Zero or multiple remote branches matching pattern '$pattern'. See above."; }
   [ -z "${2:-}" ] || echo $branches
@@ -119,7 +128,7 @@ function ensure_single_branch() {
 function search_for_branch() {
   local pattern=$1
   local branches
-  branches=$(git ls-remote --quiet origin "$pattern" | sed 's:.*/::g')
+  branches=$(git ls-remote --quiet origin "$pattern" | $SED 's:.*/::g')
   (( $(grep -c . <<< "$branches") < 2 )) || { echo -e "Branches found:\n$branches"; die "Multiple remote branches matching pattern '$pattern'. See above."; }
   [ -z "${2:-}" ] || echo $branches
 }
@@ -127,7 +136,7 @@ function search_for_branch() {
 function ensure_no_branch() {
   local pattern=$1
   local branches
-  branches=$(git ls-remote --quiet origin "$pattern" | sed 's:.*/::g')
+  branches=$(git ls-remote --quiet origin "$pattern" | $SED 's:.*/::g')
   [ -z "$branches" ] || { echo -e "Branches found:\n$branches"; die "Remote branch(es) matching '$pattern' ALREADY exist. See above."; }
 }
 
@@ -357,7 +366,9 @@ function ensure_first_gt_second() {
   local targetVersion=$1
   local branchVersion=$2
   local eq=${3:-}
-  version_gt "$targetVersion" "$branchVersion" "$eq" || die "Target version supplied is lower than the version on '$branch':
+  local branchSupplement
+  [ -z "${branch}" ] || branchSupplement=" on '${branch:-}'"
+  version_gt "$targetVersion" "$branchVersion" "$eq" || die "Target version supplied is lower than the version$branchSupplement:
   $branchVersion <- branch ($branch)
   vs
   $targetVersion <- target
@@ -429,11 +440,16 @@ TARGET_SHA=${TARGET_SHA:-}
 DEBUG=${DEBUG:-0}
 (( $DEBUG )) && { echo "DEBUG activated. Using 'set -x'..."; set -x; }
 
-
 # Add the possibility to use this script externally for other projects
 PROJECT_ROOT="${PROJECT_ROOT:-$(git rev-parse --show-toplevel)}"
 [ -r "${PROJECT_ROOT}/.version_util.overrides" ] && . "${PROJECT_ROOT}/.version_util.overrides"
 cd $PROJECT_ROOT
+
+# make sed alias gsed if available
+SED=sed
+if gsed --help &> /dev/null; then
+  SED=gsed
+fi
 
 if [[ $ARG == 'prereqs' ]]; then
   prereqs
