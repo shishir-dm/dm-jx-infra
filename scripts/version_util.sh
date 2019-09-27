@@ -323,13 +323,8 @@ function create_pull_request() {
   local baseBranch=$1
   local headBranch=$2
   local msg=${3:-"Merging '${headBranch}' into '${baseBranch}'."}
-  local reviewers=${4:-${DEFAULT_PR_REVIEWERS}}
   hub --version &> /dev/null || die "The hub binary is not installed (see: https://hub.github.com/)"
-  hubCmd pull-request \
-    -b "${baseBranch}" \
-    -b "${headBranch}" \
-    -m "${msg}" \
-    -r "${reviewers}"
+  hubCmd pull-request -b "${baseBranch}" -b "${headBranch}" -m "${msg}"
 }
 
 function release_close() {
