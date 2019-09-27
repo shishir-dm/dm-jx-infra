@@ -342,7 +342,7 @@ function all_close() {
   workingBr=$(ensure_single_branch "$branchPattern" true)
   gitCmd fetch origin $developBr
   checkout_branch $workingBr -q
-  gitCmd merge origin/$developBr
+  gitCmd merge origin/$developBr -m "Merge remote-tracking branch 'origin/$developBr' into $workingBr"
   gitCmd push
   create_pull_request $developBr $workingBr
 }
