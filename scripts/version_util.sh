@@ -336,20 +336,16 @@ function create_pull_request() {
   hubCmd pull-request -b "${baseBranch}" -h "${headBranch}" -m "${msg}"
 }
 
-function release_close() {
-  local developBr workingBr
+function all_close() {
+  local developBr workingBr branchPattern=$1
   developBr=$(ensure_single_branch "$GF_DEVELOP" true)
-  workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
+  workingBr=$(ensure_single_branch "$branchPattern" true)
+  gitCmd fetch origin $developBr
+  checkout_branch $workingBr -q
+  gitCmd merge origin/$developBr
+  gitCmd push
   create_pull_request $developBr $workingBr
 }
-
-function hotfix_close() {
-  local developBr workingBr
-  developBr=$(ensure_single_branch "$GF_DEVELOP" true)
-  workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
-  create_pull_request $developBr $workingBr
-}
-
 
 function ensure_target_version_gt_branch_version() {
   local targetVersion=$1
@@ -487,7 +483,7 @@ elif [[ $ARG == 'release_finalise' ]]; then
   tag_branch "$GF_RELEASE_PATTERN" "$@"
 elif [[ $ARG == 'release_close' ]]; then
   ensure_pristine_workspace
-  release_close "$@"
+  all_close "${GF_RELEASE_PATTERN}"
 elif [[ $ARG == 'release_rename' ]]; then
   ensure_pristine_workspace
   release_rename "$@"
@@ -503,7 +499,7 @@ elif [[ $ARG == 'hotfix_finalise' ]]; then
   tag_branch "$GF_HOTFIX_PATTERN" "$@"
 elif [[ $ARG == 'hotfix_close' ]]; then
   ensure_pristine_workspace
-  hotfix_close "$@"
+  all_close "${GF_HOTFIX_PATTERN}"
 elif [[ $ARG == 'hotfix_rename' ]]; then
   ensure_pristine_workspace
   hotfix_rename "$@"
