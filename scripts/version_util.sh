@@ -308,7 +308,6 @@ function release_create() {
   targetVersion=${TARGET_VERSION:-$targetVersion}
   ensure_first_gt_second $targetVersion "${latestReleaseTag//v/}"
   create_branch "$GF_DEVELOP" "release-${targetVersion}" release-
-  develop_tag
 }
 
 function find_latest_release_tag() {
