@@ -15,39 +15,39 @@ semver:  ## Outputs FullSemVer of the current branch according to gitversion
 
 	@$(ROOT)/scripts/version_util.sh f FullSemVer
 
-create_release:  ## Bumps minor version and creates a release branch --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
+release_create:  ## Bumps minor version and creates a release branch --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-rename_release:  ## Renames the current release branch
+release_rename:  ## Renames the current release branch
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-merge_release:  ## Merges release branch to develop and master
+release_close:  ## Creates PR from release branch to develop
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-tag_release:  ## Tags the release branch with the SemVer          --> (OPTS: TARGET_SHA=...)
+release_tag:  ## Tags the release branch with the SemVer          --> (OPTS: TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-tag_develop:  ## Tags the develop branch with the SemVer          --> (OPTS: TARGET_SHA=...)
+hotfix_create:  ## Bumps minor version and creates a hotfix branch --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-create_hotfix:  ## Bumps hotfix version and creates a hotfix branch --> (OPTS: TARGET_VERSION=x.x.x)
+hotfix_rename:  ## Renames the current hotfix branch
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-rename_hotfix:  ## Renames the current hotfix branch
+hotfix_close:  ## Creates PR from hotfix branch to develop
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-merge_hotfix:  ## Merges hotfix branch to master
+hotfix_tag:  ## Tags the hotfix branch with the SemVer          --> (OPTS: TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-tag_master:  ## Tags the HEAD of the master branch with the SemVer
+develop_tag:  ## Tags the develop branch with the SemVer          --> (OPTS: TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 

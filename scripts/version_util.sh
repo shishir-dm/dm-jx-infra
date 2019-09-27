@@ -93,6 +93,7 @@ function get_field() {
 
 function ensure_pristine_workspace() {
   local git_status unpushed_commits
+  [ -z "${NO_PRISTINE_CHECK:-}" ] || return 0
   git_status=$(git status -s)
   original_branch=$(git symbolic-ref --short HEAD)
   [ -z "$git_status" ] || { echo -e "Changes found:\n$git_status\n"; die "Workspace must be free of changes. See above and please correct."; }
@@ -156,25 +157,27 @@ function rename_branch() {
   gitCmd push --set-upstream origin $toBr
 }
 
-function rename_hotfix() {
-  local workingBr targetBranch
+function hotfix_rename() {
+  local workingBr targetBranch latestReleaseTag
   workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
   [ -n "${TARGET_VERSION:-}" ] && targetBranch="hotfix-$TARGET_VERSION" || targetBranch="$workingBr"
   targetBranch=$(readValue "New hotfix branch [$targetBranch]: " "$targetBranch")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   hotfix_semver "$targetBranch"
-  ensure_target_version_gt_branch_version "${targetBranch//hotfix-/}" $GF_MASTER
+  latestReleaseTag=$(find_latest_release_tag)
+  ensure_first_gt_second "${targetBranch//hotfix-/}" "${latestReleaseTag//v/}"
   rename_branch "$workingBr" "$targetBranch"
 }
 
-function rename_release() {
-  local workingBr targetBranch
+function release_rename() {
+  local workingBr targetBranch latestReleaseTag
   workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
   [ -n "${TARGET_VERSION:-}" ] && targetBranch="release-$TARGET_VERSION" || targetBranch="$workingBr"
   targetBranch=$(readValue "New release branch [$targetBranch]: " "$targetBranch")
   [[ "$workingBr" != "$targetBranch" ]] || die "source and target cannot be identical"
   release_semver "$targetBranch"
-  ensure_target_version_gt_branch_version "${targetBranch//release-/}" $GF_MASTER
+  latestReleaseTag=$(find_latest_release_tag)
+  ensure_first_gt_second "${targetBranch//release-/}" "${latestReleaseTag//v/}"
   rename_branch "$workingBr" "$targetBranch"
 }
 
@@ -183,6 +186,14 @@ function gitCmd() {
     echo "[DRY_RUN] git $@"
   else
     git "$@"
+  fi
+}
+
+function hubCmd() {
+  if (( $DRY_RUN )); then
+    echo "[DRY_RUN] hub $@"
+  else
+    hub "$@"
   fi
 }
 
@@ -278,45 +289,63 @@ function delete_branch() {
   gitCmd push origin :$branch
 }
 
-function create_release() {
-  local targetVersion
-  ensure_single_branch "$GF_MASTER"
+function release_create() {
+  local targetVersion latestReleaseTag
   ensure_single_branch "$GF_DEVELOP"
   ensure_no_branch "$GF_RELEASE_PATTERN"
   checkout_branch "$GF_DEVELOP" '-q'
+  latestReleaseTag=$(find_latest_release_tag)
   targetVersion=$(run_cmd /showvariable MajorMinorPatch)
   targetVersion=${TARGET_VERSION:-$targetVersion}
-  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
+  ensure_first_gt_second $targetVersion "${latestReleaseTag//v/}"
   create_branch "$GF_DEVELOP" "release-${targetVersion}" release-
 }
 
-function create_hotfix() {
-  local major minor patch targetVersion
-  ensure_single_branch "$GF_MASTER"
+function find_latest_release_tag() {
+  git tag -l --sort=-version:refname "v*" | grep -E "^v[0-9]+\.[0-9]+\.[0-9]+$" | head -n 1 | xargs
+}
+
+function hotfix_create() {
+  local major minor patch latestReleaseTag targetVersion
   ensure_no_branch "$GF_HOTFIX_PATTERN"
-  checkout_branch "$GF_MASTER" '-q'
+  latestReleaseTag=$(find_latest_release_tag)
+  checkout_branch "$latestReleaseTag" '-q'
   major=$(run_cmd /showvariable Major)
   minor=$(run_cmd /showvariable Minor)
   patch=$(run_cmd /showvariable Patch)
   targetVersion="${major}.${minor}.$(( $patch + 1 ))"
   targetVersion=${TARGET_VERSION:-$targetVersion}
-  ensure_target_version_gt_branch_version $targetVersion $GF_MASTER
-  create_branch "$GF_MASTER" "hotfix-${targetVersion}" hotfix-
+  ensure_first_gt_second $targetVersion "${latestReleaseTag//v/}"
+  create_branch "$latestReleaseTag" "hotfix-${targetVersion}" hotfix-
 }
 
-function merge_release() {
-  local masterBr developBr workingBr
-  masterBr=$(ensure_single_branch "$GF_MASTER" true)
+function create_pull_request() {
+  local baseBranch=$1
+  local headBranch=$2
+  local msg=${3:-"Merging '${headBranch}' into '${baseBranch}'."}
+  local reviewers=${4:-${DEFAULT_PR_REVIEWERS}}
+  hub --version &> /dev/null || die "The hub binary is not installed (see: https://hub.github.com/)"
+  hubCmd pull-request \
+    -b "${baseBranch}" \
+    -b "${headBranch}" \
+    -m "${msg}" \
+    -r "${reviewers}"
+}
+
+function release_close() {
+  local developBr workingBr
   developBr=$(ensure_single_branch "$GF_DEVELOP" true)
   workingBr=$(ensure_single_branch "$GF_RELEASE_PATTERN" true)
-  # release version has to be greater than master
-  ensure_source_version_gt_target_version $workingBr $masterBr
-  merge_source_into_target $workingBr $developBr
-  merge_source_into_target $workingBr $masterBr
-  tag_branch "$GF_MASTER"
-  tag_branch "$GF_DEVELOP"
-  delete_branch $workingBr
+  create_pull_request $developBr $workingBr
 }
+
+function hotfix_close() {
+  local developBr workingBr
+  developBr=$(ensure_single_branch "$GF_DEVELOP" true)
+  workingBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
+  create_pull_request $developBr $workingBr
+}
+
 
 function ensure_target_version_gt_branch_version() {
   local targetVersion=$1
@@ -326,6 +355,13 @@ function ensure_target_version_gt_branch_version() {
   test_semver $targetVersion
   checkout_branch $branch -q
   branchVersion=$(run_cmd /showvariable SemVer)
+  ensure_first_gt_second "$targetVersion" "$branchVersion" "$eq"
+}
+
+function ensure_first_gt_second() {
+  local targetVersion=$1
+  local branchVersion=$2
+  local eq=${3:-}
   version_gt "$targetVersion" "$branchVersion" "$eq" || die "Target version supplied is lower than the version on '$branch':
   $branchVersion <- branch ($branch)
   vs
@@ -333,24 +369,8 @@ function ensure_target_version_gt_branch_version() {
   "
 }
 
-function ensure_source_version_gt_target_version() {
-  local source=$1
-  local target=$2
-  local sourceVersion targetVersion
-  checkout_branch $source -q
-  sourceVersion=$(run_cmd /showvariable SemVer)
-  checkout_branch $target -q
-  targetVersion=$(run_cmd /showvariable SemVer)
-  version_gt $sourceVersion $targetVersion || die "Source branch version is lower than target branch version:
-  $sourceVersion <- source ($source)
-  vs
-  $targetVersion <- target ($target)
-  "
-}
-
 function status() {
-  local masterBr developBr releaseBr hotfixBr
-  for pattern in "$GF_DEVELOP" "$GF_RELEASE_PATTERN" "$GF_HOTFIX_PATTERN" "$GF_MASTER"; do
+  for pattern in "$GF_DEVELOP" "$GF_RELEASE_PATTERN" "$GF_HOTFIX_PATTERN"; do
     workingBr=$(search_for_branch "$pattern" true)
     if [ -n "$workingBr" ]; then
       checkout_branch $workingBr '-q'
@@ -359,20 +379,6 @@ function status() {
       printf "%-15s %-10s\n" "$pattern" "does not exist"
     fi
   done
-}
-
-function merge_hotfix() {
-  local masterBr developBr releaseBr hotfixBr
-  masterBr=$(ensure_single_branch "$GF_MASTER" true)
-  developBr=$(ensure_single_branch "$GF_DEVELOP" true)
-  hotfixBr=$(ensure_single_branch "$GF_HOTFIX_PATTERN" true)
-  # hotfix version has to be greater than master
-  ensure_source_version_gt_target_version $hotfixBr $masterBr
-  merge_source_into_target $hotfixBr $developBr
-  merge_source_into_target $hotfixBr $masterBr
-  tag_branch "$GF_MASTER"
-  tag_branch "$GF_DEVELOP"
-  delete_branch $hotfixBr
 }
 
 function tag_branch() {
@@ -417,7 +423,7 @@ trap finish EXIT
 ARG=${1:-}; shift || true
 
 # some default vars - need to change them for europa.
-GF_MASTER="master"
+DEFAULT_PR_REVIEWERS=sboardwell,sbuechner
 GF_DEVELOP='develop'
 GF_RELEASE_PATTERN='release-*'
 GF_HOTFIX_PATTERN='hotfix-*'
@@ -440,33 +446,30 @@ elif [[ $ARG == 'run' ]]; then
   run_cmd "$@"
 elif [[ $ARG == 'f' ]]; then
   get_field ${1:-}
-elif [[ $ARG == 'create_release' ]]; then
+elif [[ $ARG == 'release_create' ]]; then
   ensure_pristine_workspace
-  create_release "$@"
-elif [[ $ARG == 'rename_release' ]]; then
+  release_create "$@"
+elif [[ $ARG == 'release_rename' ]]; then
   ensure_pristine_workspace
-  rename_release "$@"
-elif [[ $ARG == 'rename_hotfix' ]]; then
+  release_rename "$@"
+elif [[ $ARG == 'hotfix_rename' ]]; then
   ensure_pristine_workspace
-  rename_hotfix "$@"
-elif [[ $ARG == 'tag_develop' ]]; then
+  hotfix_rename "$@"
+elif [[ $ARG == 'develop_tag' ]]; then
   ensure_pristine_workspace
   tag_branch "$GF_DEVELOP" "$@"
-elif [[ $ARG == 'tag_release' ]]; then
+elif [[ $ARG == 'release_tag' ]]; then
   ensure_pristine_workspace
   tag_branch "$GF_RELEASE_PATTERN" "$@"
-elif [[ $ARG == 'tag_master' ]]; then
+elif [[ $ARG == 'hotfix_create' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_MASTER" "$@"
-elif [[ $ARG == 'create_hotfix' ]]; then
+  hotfix_create "$@"
+elif [[ $ARG == 'release_close' ]]; then
   ensure_pristine_workspace
-  create_hotfix "$@"
-elif [[ $ARG == 'merge_release' ]]; then
+  release_close "$@"
+elif [[ $ARG == 'hotfix_close' ]]; then
   ensure_pristine_workspace
-  merge_release "$@"
-elif [[ $ARG == 'merge_hotfix' ]]; then
-  ensure_pristine_workspace
-  merge_hotfix "$@"
+  hotfix_close "$@"
 elif [[ $ARG == 'status' ]]; then
   ensure_pristine_workspace
   status "$@"
