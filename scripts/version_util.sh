@@ -368,7 +368,7 @@ function ensure_first_gt_second() {
   local branchVersion=$2
   local eq=${3:-}
   local branchSupplement
-  [ -z "${branch}" ] || branchSupplement=" on '${branch:-}'"
+  [ -z "${branch:-}" ] || branchSupplement=" on '${branch:-}'"
   version_gt "$targetVersion" "$branchVersion" "$eq" || die "Target version supplied is lower than the version$branchSupplement:
   $branchVersion <- branch ($branch)
   vs
