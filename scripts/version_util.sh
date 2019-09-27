@@ -377,6 +377,7 @@ function ensure_first_gt_second() {
 }
 
 function status() {
+  local latestReleaseTag
   for pattern in "$GF_DEVELOP" "$GF_RELEASE_PATTERN" "$GF_HOTFIX_PATTERN"; do
     workingBr=$(search_for_branch "$pattern" true)
     if [ -n "$workingBr" ]; then
@@ -386,6 +387,8 @@ function status() {
       printf "%-15s %-10s\n" "$pattern" "does not exist"
     fi
   done
+  latestReleaseTag=$(find_latest_release_tag)
+  printf "%-15s %-10s\n" "latest" "$latestReleaseTag -> $(git --no-pager log --oneline --no-walk $latestReleaseTag)"
 }
 
 function tag_branch() {
