@@ -11,46 +11,54 @@ empty_commit:  ## Adds a empty commit to the current branch
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-semver:  ## Outputs FullSemVer of the current branch according to gitversion
+semver:  ## Outputs FullSemVer according to gitversion
 
 	@$(ROOT)/scripts/version_util.sh f FullSemVer
 
-release_create:  ## Bumps minor version and creates a release branch --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
+release_create:  ## Creates a release branch                       --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-release_rename:  ## Renames the current release branch
+release_tag:  ## Tags branch with the SemVer                    --> (OPTS: TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-release_close:  ## Creates PR from release branch to develop
+release_finalise:  ## Tags branch with official 3 digit SemVer version
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-release_tag:  ## Tags the release branch with the SemVer          --> (OPTS: TARGET_SHA=...)
+release_close:  ## Merge develop into branch and create a PR if necessary
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-hotfix_create:  ## Bumps minor version and creates a hotfix branch --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
+release_rename:  ## Rename the current release branch (for corrections)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-hotfix_rename:  ## Renames the current hotfix branch
+hotfix_create:  ## Bump patch version and create hotfix branch   --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-hotfix_close:  ## Creates PR from hotfix branch to develop
+hotfix_tag:  ## Tags the branch with the SemVer                --> (OPTS: TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-hotfix_tag:  ## Tags the hotfix branch with the SemVer          --> (OPTS: TARGET_SHA=...)
+hotfix_finalise:  ## Tags branch with official 3 digit SemVer version
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-develop_tag:  ## Tags the develop branch with the SemVer          --> (OPTS: TARGET_SHA=...)
+hotfix_close:  ## Merge develop into branch and create a PR if necessary
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
-status:  ## Get the status of all current gitflow branches
+hotfix_rename:  ## Rename the current hotfix branch
+
+	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
+
+develop_tag:  ## Tags the develop branch with the SemVer        --> (OPTS: TARGET_SHA=...)
+
+	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
+
+status:  ## Get the status of all current github flow branches
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
