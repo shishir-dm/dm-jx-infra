@@ -226,13 +226,13 @@ function determine_branch_or_tag_point() {
     branchOrTagPoint=$(git rev-parse --short "$TARGET_SHA")
   else
     branchOrTagPoint=$(git rev-parse --short HEAD)
-  fi
-  # check for custom sha from user input
-  if [[ "$targetBranch" =~ release* ]]; then
-    echo "Listing last 10 commits."
-    git --no-pager log --oneline -n 10
-    branchOrTagPointInput=$(readValue "Commit to branch from [$branchOrTagPoint]: " "$branchOrTagPoint")
-    branchOrTagPoint=${branchOrTagPointInput:-$branchOrTagPoint}
+    # check for custom sha from user input
+    if [[ "$targetBranch" =~ release* ]]; then
+      echo "Listing last 10 commits."
+      git --no-pager log --oneline -n 10
+      branchOrTagPointInput=$(readValue "Commit to branch from [$branchOrTagPoint]: " "$branchOrTagPoint")
+      branchOrTagPoint=${branchOrTagPointInput:-$branchOrTagPoint}
+    fi
   fi
   # finally ensure the sha is after the latest tag (if the branch has a tag)
   if git describe --abbrev=0 --tags &> /dev/null; then
@@ -318,10 +318,9 @@ function hotfix_create() {
   local major minor patch latestReleaseTag targetVersion
   ensure_no_branch "$GF_HOTFIX_PATTERN"
   latestReleaseTag=$(find_latest_release_tag)
-  checkout_branch "$latestReleaseTag" '-q'
-  major=$(run_cmd /showvariable Major)
-  minor=$(run_cmd /showvariable Minor)
-  patch=$(run_cmd /showvariable Patch)
+  major=$(cut -d . -f 1 <<< ${latestReleaseTag/v/})
+  minor=$(cut -d . -f 2 <<< ${latestReleaseTag/v/})
+  patch=$(cut -d . -f 3 <<< ${latestReleaseTag/v/})
   targetVersion="${major}.${minor}.$(( $patch + 1 ))"
   targetVersion=${TARGET_VERSION:-$targetVersion}
   ensure_first_gt_second $targetVersion "${latestReleaseTag//v/}"
@@ -410,12 +409,15 @@ function develop_tag() {
 }
 
 function set_final_target_version() {
-  local versionStr workingBr=$1
+  local versionStr shaStr workingBr=$1
   [ -z "${TARGET_VERSION:-}" ] || die "TARGET_VERSION is not allowed to be set manually when finalizing."
   workingBr=$(ensure_single_branch "$workingBr" true)
   versionStr=$(echo "${workingBr}" | cut -d '-' -f 2)
   test_semver "${versionStr}"
   TARGET_VERSION="${versionStr}"
+  [ -z "${TARGET_SHA:-}" ] || die "TARGET_SHA is not allowed to be set manually when finalizing."
+  checkout_branch $workingBr '-q'
+  TARGET_SHA=$(git rev-parse --short HEAD)
 }
 
 function empty_commit() {
