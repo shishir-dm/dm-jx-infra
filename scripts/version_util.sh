@@ -401,7 +401,7 @@ function tag_branch() {
   # Add 'eq' because the SemVer could be equal even if tag doesn't exist yet.
   ensure_target_version_gt_branch_version "${tag:1}" "$workingBr" "eq"
   confirm "Will tag branch '$workingBr' with '$tag'"
-  gitCmd tag -am "Add tag '$tag' (performed by ${USER:-$USERNAME})" $tag $branchOrTagPoint
+  gitCmd tag -am "Add tag '$tag' (performed by $USER)" $tag $branchOrTagPoint
   gitCmd push origin $tag
 }
 
