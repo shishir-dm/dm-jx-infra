@@ -116,9 +116,10 @@ def processGitCreds() {
     script {
       // copy gitCreds over to the default location on gitversion
       // (the gitversion container doesn't like them where they are at the moment)
-      def gitCreds = sh(returnStdout: true, script: "cat /home/jenkins/git/credentials")
+      sh "cp /home/jenkins/git/credentials gitCreds"
       container('gitversion') {
-          sh """echo "${gitCreds}" > ~/.git-credentials"""
+          sh 'cp gitCreds ~/.git-credentials'
+          sh 'rm gitCreds'
       }
     }
 }
