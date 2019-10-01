@@ -163,7 +163,7 @@ def fetchMandatoryRefs() {
     // Fetch default default branches needed for gitversion using gitflow.
     // These are things like master or stable, develop or dev, release-* etc
     sh '''
-    for b in $(git ls-remote --quiet --heads origin stable master dev develop release-* hotfix-* | sed "s:.*/::g"); do 
+    for b in $(git ls-remote --quiet --heads origin stable master dev develop release-* hotfix-* | sed "s:.*/::g"); do
         git rev-parse -q --verify $b > /dev/null && echo "Branch $b exists locally" || git fetch origin $b:$b
     done
     '''
