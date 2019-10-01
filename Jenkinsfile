@@ -25,27 +25,19 @@ pipeline {
             }
         }
         stage('Execute') {
-            when {
-                beforeInput true
-                expression { params.MANUAL_CONFIRMATION }
-            }
-            input {
-                message """Please see the DRY_RUN output above.
+            steps {
+                input """Please see the DRY_RUN output above.
 
 - If you need to change any parameters, click "Abort" run again with the corrected parameters.
 
 - If the output looks correct, click "Continue" to perform the step.
 
-                """
-                id "simple-input"
-            }
-            steps {
+                    """
                 container('gitversion') {
                     sh '''
                     unset JENKINS_URL
                     make $MAKE_TARGET BATCH_MODE=1
                     '''
-                    echo "${params.MANUAL_CONFIRMATION}"
                 }
             }
         }
