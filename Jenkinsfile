@@ -118,6 +118,7 @@ def processGitCreds() {
       // (the gitversion container doesn't like them where they are at the moment)
       sh "cp /home/jenkins/git/credentials gitCreds"
       container('gitversion') {
+          sh 'git config --global credential.helper store'
           sh 'cp gitCreds ~/.git-credentials'
           sh 'rm gitCreds'
       }
