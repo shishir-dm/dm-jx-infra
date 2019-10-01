@@ -66,6 +66,7 @@ Uncheck this parameter to run commands without manual confirmation (to be used a
                 input """
 -------------------------
 Running: make $MAKE_TARGET DRY_RUN=1 BATCH_MODE=1
+-------------------------
 
 ${env.DRY_RUN_OUTPUT}
 -------------------------
@@ -111,10 +112,15 @@ def processGitCreds() {
     // Set git auths
     sh "git config --global credential.helper store"
     sh "jx step git credentials"
-    // copy over to the default location
-    // (for some reason the gitversion container doesn't like them where they are at the moment)
-    sh "cp ~/git/credentials ~/.git-credentials || true"
-    sh "cp /home/jenkins/git/credentials ~/.git-credentials || true"
+
+    script {
+      // copy gitCreds over to the default location on gitversion
+      // (the gitversion container doesn't like them where they are at the moment)
+      def gitCreds = sh(returnStdout: true, script: "cat /home/jenkins/git/credentials")
+      container('gitversion') {
+          sh """echo "${gitCreds}" > ~/.git-credentials"""
+      }
+    }
 }
 
 def specialCaseGitHeadMove() {
