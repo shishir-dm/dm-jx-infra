@@ -13,12 +13,28 @@ pipeline {
         }
     }
     stages {
-        stage('Test') {
+        stage('Dry Run') {
             steps {
                 processGitVersion()
                 container('gitversion') {
-                    sh "unset JENKINS_URL && make status"
+                    sh '''
+                    unset JENKINS_URL
+                    make $MAKE_TARGET DRY_RUN=1 BATCH_MODE=1
+                    '''
                 }
+            }
+        }
+        stage('Execute') {
+            when {
+                beforeInput true
+                expression { params.MANUAL_CONFIRMATION == 'true' }
+            }
+            input {
+                message "Continue?"
+                id "simple-input"
+            }
+            steps {
+                echo 'Deploying'
             }
         }
     }
@@ -66,7 +82,6 @@ def determineOriginalCheckout() {
             returnStdout: true,
             script: 'git symbolic-ref HEAD &> /dev/null && echo -n "$(git symbolic-ref --short HEAD)" || echo -n $(git rev-parse --verify HEAD)'
     )
-    
 }
 def fetchMandatoryRefs() {
     // fetch the tags since the current checkout doesn't have them.
