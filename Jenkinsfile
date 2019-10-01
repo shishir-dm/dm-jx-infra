@@ -81,8 +81,15 @@ Please see the DRY_RUN output above.
             }
         }
         stage('Execute') {
+            environment {
+                GITHUB_CREDS = credentials('jx-pipeline-git-github-github')
+            }
             steps {
                 container('gitversion') {
+                    writeFile file: 'hub', text: """github.com:
+- user: $GITHUB_CREDS_USR
+  oauth_token: $GITHUB_CREDS_PSW"""
+                    sh 'mkdir ~/.config && mv hub /home/jenkins/hub'
                     sh '''
                     unset JENKINS_URL
                     make $MAKE_TARGET BATCH_MODE=1
@@ -119,6 +126,7 @@ def processGitCreds() {
       sh "cp /home/jenkins/git/credentials gitCreds"
       container('gitversion') {
           sh 'git config --global credential.helper store'
+          sh 'git config --global push.default simple'
           sh 'cp gitCreds ~/.git-credentials'
           sh 'rm gitCreds'
       }
