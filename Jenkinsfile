@@ -1,4 +1,34 @@
 pipeline {
+    parameters {
+        choice choices: [
+          'status',
+          'help',
+          'release_create',
+          'release_tag',
+          'release_finalise',
+          'release_close',
+          'release_rename',
+          'hotfix_create',
+          'hotfix_tag',
+          'hotfix_finalise',
+          'hotfix_close',
+          'hotfix_rename',
+          'develop_tag'],
+          description: 'Makefile target to use. Use "help" first to see options.',
+          name: 'MAKE_TARGET'
+        string defaultValue: '',
+          description: 'TARGET_VERSION referenced by the Makefile targets',
+          name: 'TARGET_VERSION',
+          trim: true
+        string defaultValue: '',
+          description: 'TARGET_SHA referenced by the Makefile targets',
+          name: 'TARGET_SHA',
+          trim: true
+        booleanParam defaultValue: true,
+          description: '''All commands will be run initially with "DRY_RUN=1" followed by a manual confirmation step before executing the command.
+Uncheck this parameter to run commands without manual confirmation (to be used at a later date in automated deployments)''',
+          name: 'MANUAL_CONFIRMATION'
+    }
     options {
         disableConcurrentBuilds()
         buildDiscarder(logRotator(numToKeepStr:'30'))
@@ -13,30 +43,58 @@ pipeline {
         }
     }
     stages {
-        stage('Dry Run') {
+        stage('Setup') {
             steps {
                 processGitVersion()
+            }
+        }
+        stage('Dry Run') {
+            steps {
                 container('gitversion') {
-                    sh '''
-                    unset JENKINS_URL
-                    make $MAKE_TARGET DRY_RUN=1 BATCH_MODE=1
-                    '''
+                    script {
+                        env.DRY_RUN_OUTPUT = sh(returnStdout: true, script: '''
+                        unset JENKINS_URL
+                        make $MAKE_TARGET DRY_RUN=1 BATCH_MODE=1
+                        ''')
+                    }
+                    echo "${env.DRY_RUN_OUTPUT}"
                 }
+            }
+        }
+        stage('Verify') {
+            steps {
+                input """
+-------------------------
+Running: make $MAKE_TARGET DRY_RUN=1 BATCH_MODE=1
+
+${env.DRY_RUN_OUTPUT}
+-------------------------
+
+Please see the DRY_RUN output above.
+
+- If you need to change any parameters, click "Abort" run again with the corrected parameters.
+
+- If the output looks correct, click "Proceed" to perform the step.
+
+                    """
             }
         }
         stage('Execute') {
             steps {
-                input """Please see the DRY_RUN output above.
-
-- If you need to change any parameters, click "Abort" run again with the corrected parameters.
-
-- If the output looks correct, click "Continue" to perform the step.
-
-                    """
                 container('gitversion') {
                     sh '''
                     unset JENKINS_URL
                     make $MAKE_TARGET BATCH_MODE=1
+                    '''
+                }
+            }
+        }
+        stage('Final Status') {
+            steps {
+                container('gitversion') {
+                    sh '''
+                    unset JENKINS_URL
+                    make status
                     '''
                 }
             }
