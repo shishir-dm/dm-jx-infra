@@ -305,8 +305,20 @@ function create_pull_request() {
   local baseBranch=$1
   local headBranch=$2
   local msg=${3:-"Merging '${headBranch}' into '${baseBranch}'."}
-  hub --version &> /dev/null || die "The hub binary is not installed (see: https://hub.github.com/)"
-  hubCmd pull-request -b "${baseBranch}" -h "${headBranch}" -m "${msg}"
+  local commitCnt prURL
+  # number of commits to be merged between headBranch and baseBranch
+  commitCnt=$(git rev-list origin/${headBranch} ^origin/${baseBranch} --count)
+  if [ "${commitCnt}" -ne "${commitCnt}" ] 2>/dev/null; then
+    die "The returned commitCnt '${commitCnt}' is not an integer."
+  elif (( $commitCnt )); then
+    echo "Commits found between origin/${headBranch} and origin/${baseBranch}. Creating pull request..."
+    hub --version &> /dev/null || die "The hub binary is not installed (see: https://hub.github.com/)"
+    hubCmd pull-request -b "${baseBranch}" -h "${headBranch}" -m "${msg}"
+    #prURL=$(hubCmd pr list -b "${baseBranch}" -h "${headBranch}" --format='%U%n')
+  else
+    # NOTHING_TO_MERGE will be referenced in the Jenkinsfile. Do not change!
+    echo "NOTHING_TO_MERGE: No commits to merge found between origin/${headBranch} and origin/${baseBranch}. Will not create pull request."
+  fi
 }
 
 function all_close() {

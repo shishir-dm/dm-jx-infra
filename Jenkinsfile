@@ -62,6 +62,9 @@ Uncheck this parameter to run commands without manual confirmation (to be used a
             }
         }
         stage('Verify') {
+            when {
+                expression { ! params.MANUAL_CONFIRMATION }
+            }
             steps {
                 input """
 -------------------------
@@ -85,15 +88,34 @@ Please see the DRY_RUN output above.
                 GITHUB_CREDS = credentials('jx-pipeline-git-github-github')
             }
             steps {
-                container('gitversion') {
-                    writeFile file: 'hub', text: """github.com:
-- user: $GITHUB_CREDS_USR
-  oauth_token: $GITHUB_CREDS_PSW"""
-                    sh 'mkdir ~/.config && mv hub /home/jenkins/hub'
-                    sh '''
-                    unset JENKINS_URL
-                    make $MAKE_TARGET BATCH_MODE=1
-                    '''
+                // if NOTHING_TO_MERGE found in the env.DRY_RUN_OUTPUT it means
+                //  - release_close or hotfix_close was passed as a make target
+                //  - there is nothing to merge so no pull request can be created
+                // In this case, we can offer to delete the branch
+                script {
+                  if ("${env.DRY_RUN_OUTPUT}".contains('NOTHING_TO_MERGE')) {
+                      echo """
+-------------------------
+It looks like there is nothing to merge back to the development branch.
+
+!!! NOTE: Will not attempt to create a pull request
+
+!!! NOTE: You need to delete the branch manually
+
+-------------------------
+                    """
+                  } else {
+                      container('gitversion') {
+                          writeFile file: 'hub', text: """github.com:
+      - user: $GITHUB_CREDS_USR
+        oauth_token: $GITHUB_CREDS_PSW"""
+                          sh 'mkdir ~/.config && mv hub /home/jenkins/hub'
+                          sh '''
+                          unset JENKINS_URL
+                          make $MAKE_TARGET BATCH_MODE=1
+                          '''
+                      }
+                  }
                 }
             }
         }
