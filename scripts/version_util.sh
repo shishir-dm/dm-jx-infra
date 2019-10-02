@@ -371,6 +371,23 @@ function status() {
   printf "%-15s %-10s\n" "latest" "$latestReleaseTag -> $(git --no-pager log --oneline --no-walk $latestReleaseTag)"
 }
 
+function exact_tag_exists() {
+  if git show-ref --tags --quiet --verify -- "refs/tags/$tag"; then
+    local tagCommit targetSha
+    tagCommit=$(git rev-list -n 1 "$tag")
+    targetSha=$(git rev-parse "$branchOrTagPoint")
+    if [[ "$tagCommit" == "$targetSha" ]]; then
+      return true
+    else
+      die "Tag '$tag' exists and points to a different commit:
+      current tag sha = $tagCommit
+      target tag sha  = $targetSha
+      "
+    fi
+  fi
+  return false
+}
+
 function tag_branch() {
   local workingBr=$1
   local tag tagInput tagVersion
@@ -385,9 +402,14 @@ function tag_branch() {
   # ${tag:1} to remove the prefixing 'v'
   # Add 'eq' because the SemVer could be equal even if tag doesn't exist yet.
   ensure_target_version_gt_branch_version "${tag:1}" "$workingBr" "eq"
-  confirm "Will tag branch '$workingBr' with '$tag'"
-  gitCmd tag -am "Add tag '$tag' (performed by ${USER:-${USERNAME:-n/a}})" $tag $branchOrTagPoint
-  gitCmd push origin $tag
+  # if tag exists and points to the same commit, ignore...
+  if exact_tag_exists; then
+    echo "Tag exists AND points to the same commit. No need to add the tag. Ignoring..."
+  else
+    confirm "Will tag branch '$workingBr' with '$tag' at commit '$branchOrTagPoint'"
+    gitCmd tag -am "Add tag '$tag' (performed by ${USER:-${USERNAME:-n/a}})" $tag $branchOrTagPoint
+    gitCmd push origin $tag
+  fi
 }
 
 function develop_tag() {
