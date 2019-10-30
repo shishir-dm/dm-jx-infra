@@ -231,7 +231,7 @@ function determine_branch_or_tag_point() {
   else
     branchOrTagPoint=$(git rev-parse --short HEAD)
     # check for custom sha from user input
-    if [[ "$targetBranch" =~ release* ]]; then
+    if [[ "$targetBranch" =~ ${GF_RELEASE_PATTERN} ]]; then
       echo "Listing last 10 commits."
       git --no-pager log --oneline -n 10
       branchOrTagPointInput=$(readValue "Commit to branch from [$branchOrTagPoint]: " "$branchOrTagPoint")
@@ -317,7 +317,7 @@ function create_pull_request() {
 
     # NOTE: if we find extra commits on the release branch we need to
     # tag the develop branch at the original branch point.
-    if [[ "${headBranch}" =~ "release-*" ]]; then
+    if [[ "${headBranch}" =~ ${GF_RELEASE_PATTERN} ]]; then
       TARGET_SHA=$(git merge-base "origin/${headBranch}" "origin/${baseBranch}")
       echo "Tagging develop branch at the merge-base commit: ${TARGET_SHA}"
       develop_tag
