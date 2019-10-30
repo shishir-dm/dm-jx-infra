@@ -449,7 +449,7 @@ function tag_merge_base_on_develop_if_necessary() {
       if [ "${commitCnt}" -ne "${commitCnt}" ] 2>/dev/null; then
         die "The returned commitCnt '${commitCnt}' is not an integer."
       elif (( $commitCnt )); then
-        TARGET_VERSION=$(run_cmd /showvariable FullSemVer)
+        TARGET_VERSION=$(run_cmd /showvariable SemVer)
       else
         # SPECIAL CASE: no commits on develop branch since creating the release
         #  This means the commit is identical and we will not see the "newly bumped"
@@ -458,7 +458,7 @@ function tag_merge_base_on_develop_if_necessary() {
         #  - get the version to set TARGET_VERSION
         #  - delete the commit again
         git commit --no-gpg-sign --allow-empty -m "Empty commit"
-        TARGET_VERSION=$(run_cmd /showvariable FullSemVer)
+        TARGET_VERSION=$(run_cmd /showvariable SemVer)
         git reset --hard HEAD~1
       fi
       echo "Tagging '${GF_DEVELOP}' with '${TARGET_VERSION}' at the merge-base commit: ${mergeBaseSha}"
