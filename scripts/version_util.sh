@@ -502,8 +502,6 @@ elif [[ $ARG == 'release_tag' ]]; then
   tag_branch "$GF_RELEASE_PATTERN" "$@"
 elif [[ $ARG == 'release_finalise' ]]; then
   ensure_pristine_workspace
-  echo "*** Tagging develop so that we keep the current bumped version."
-  tag_branch "$GF_DEVELOP" "$@"
   set_final_target_version "$GF_RELEASE_PATTERN"
   tag_branch "$GF_RELEASE_PATTERN" "$@"
 elif [[ $ARG == 'release_close' ]]; then
