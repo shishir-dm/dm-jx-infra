@@ -441,6 +441,7 @@ function tag_merge_base_on_develop_if_necessary() {
       echo "Tagging '${GF_DEVELOP}' at the merge-base commit: ${mergeBaseSha}"
       # set new TARGET_SHA before tagging
       TARGET_SHA="$mergeBaseSha"
+      TARGET_VERSION=
       develop_tag
     else
       echo "No commits found between release branch and the merge base. Will not tag '${GF_DEVELOP}' branch."
