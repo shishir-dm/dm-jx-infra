@@ -438,10 +438,30 @@ function tag_merge_base_on_develop_if_necessary() {
       die "The returned commitCnt '${commitCnt}' is not an integer."
     elif (( $commitCnt )); then
       echo "Additional commits found on release branch."
-      echo "Tagging '${GF_DEVELOP}' at the merge-base commit: ${mergeBaseSha}"
+
       # set new TARGET_SHA before tagging
       TARGET_SHA="$mergeBaseSha"
-      TARGET_VERSION=
+
+      # Check that there has been a commit on develop since creating the release
+      # branch.
+      checkout_branch "${GF_DEVELOP}"
+      commitCnt=$(git rev-list HEAD ^${mergeBaseSha} --count)
+      if [ "${commitCnt}" -ne "${commitCnt}" ] 2>/dev/null; then
+        die "The returned commitCnt '${commitCnt}' is not an integer."
+      elif (( $commitCnt )); then
+        TARGET_VERSION=$(run_cmd /showvariable FullSemVer)
+      else
+        # SPECIAL CASE: no commits on develop branch since creating the release
+        #  This means the commit is identical and we will not see the "newly bumped"
+        #  version. To solve this, we need to:
+        #  - add a commit without pushing
+        #  - get the version to set TARGET_VERSION
+        #  - delete the commit again
+        git commit --no-gpg-sign --allow-empty -m "Empty commit"
+        TARGET_VERSION=$(run_cmd /showvariable FullSemVer)
+        git reset --hard HEAD~1
+      fi
+      echo "Tagging '${GF_DEVELOP}' with '${TARGET_VERSION}' at the merge-base commit: ${mergeBaseSha}"
       develop_tag
     else
       echo "No commits found between release branch and the merge base. Will not tag '${GF_DEVELOP}' branch."
