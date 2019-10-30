@@ -314,6 +314,16 @@ function create_pull_request() {
   if [ "${commitCnt}" -ne "${commitCnt}" ] 2>/dev/null; then
     die "The returned commitCnt '${commitCnt}' is not an integer."
   elif (( $commitCnt )); then
+
+    # NOTE: if we find extra commits on the release branch we need to
+    # tag the develop branch at the original branch point.
+    if [ "${headBranch}" =~ "release-*" ]; then
+      TARGET_SHA=$(git merge-base "origin/${headBranch}" "origin/${baseBranch}")
+      echo "Tagging develop branch at the merge-base commit: ${TARGET_SHA}"
+      develop_tag
+    fi
+
+    # Create the pull request
     echo "Commits found between origin/${headBranch} and origin/${baseBranch}. Creating pull request..."
     hub --version &> /dev/null || die "The hub binary is not installed (see: https://hub.github.com/)"
     hubCmd pull-request -b "${baseBranch}" -h "${headBranch}" -m "${msg}"
