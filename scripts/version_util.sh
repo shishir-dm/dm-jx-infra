@@ -314,15 +314,6 @@ function create_pull_request() {
   if [ "${commitCnt}" -ne "${commitCnt}" ] 2>/dev/null; then
     die "The returned commitCnt '${commitCnt}' is not an integer."
   elif (( $commitCnt )); then
-
-    # NOTE: if we find extra commits on the release branch we need to
-    # tag the develop branch at the original branch point.
-    if [[ "${headBranch}" =~ ${GF_RELEASE_PATTERN} ]]; then
-      TARGET_SHA=$(git merge-base "origin/${headBranch}" "origin/${baseBranch}")
-      echo "Tagging develop branch at the merge-base commit: ${TARGET_SHA}"
-      develop_tag
-    fi
-
     # Create the pull request
     echo "Commits found between origin/${headBranch} and origin/${baseBranch}. Creating pull request..."
     hub --version &> /dev/null || die "The hub binary is not installed (see: https://hub.github.com/)"
@@ -429,6 +420,37 @@ function develop_tag() {
   tag_branch "$GF_DEVELOP"
 }
 
+function tag_merge_base_on_develop_if_necessary() {
+  local workingBr=$1
+  local mergeBaseSha commitCnt
+  workingBr=$(ensure_single_branch "$workingBr" true)
+  # NOTE:
+  #  - the TARGET_SHA has been set by 'set_final_target_version' below and is
+  #    the HEAD of the release-branch.
+  #  - the mergeBaseSha is the base of the release branch.
+  #  - we will compare the number of commits between the two SHAs
+  #  - if we find extra commits on the release branch we need to tag the develop
+  #    branch at the original branching point sha.
+  if [[ "${workingBr}" =~ ${GF_RELEASE_PATTERN} ]]; then
+    mergeBaseSha=$(git merge-base "${TARGET_SHA}" "${GF_DEVELOP}")
+    commitCnt=$(git rev-list ${TARGET_SHA} ^${mergeBaseSha} --count)
+    if [ "${commitCnt}" -ne "${commitCnt}" ] 2>/dev/null; then
+      die "The returned commitCnt '${commitCnt}' is not an integer."
+    elif (( $commitCnt )); then
+      echo "Additional commits found on release branch."
+      echo "Tagging '${GF_DEVELOP}' at the merge-base commit: ${mergeBaseSha}"
+      # set new TARGET_SHA before tagging
+      TARGET_SHA="$mergeBaseSha"
+      develop_tag
+    else
+      echo "No commits found between release branch and the merge base. Will not tag '${GF_DEVELOP}' branch."
+      echo "No need to tag the '${GF_DEVELOP}' branch since the same commit has been tagged on the '${workingBr}'."
+    fi
+  else
+    echo "Branch '${workingBr}' not a release branch. Not tagging ${GF_DEVELOP}."
+  fi
+}
+
 function set_final_target_version() {
   local versionStr shaStr workingBr=$1
   [ -z "${TARGET_VERSION:-}" ] || die "TARGET_VERSION is not allowed to be set manually when finalizing."
@@ -504,6 +526,7 @@ elif [[ $ARG == 'release_finalise' ]]; then
   ensure_pristine_workspace
   set_final_target_version "$GF_RELEASE_PATTERN"
   tag_branch "$GF_RELEASE_PATTERN" "$@"
+  tag_merge_base_on_develop_if_necessary "$GF_RELEASE_PATTERN"
 elif [[ $ARG == 'release_close' ]]; then
   ensure_pristine_workspace
   all_close "${GF_RELEASE_PATTERN}"
