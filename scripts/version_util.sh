@@ -103,7 +103,10 @@ function get_field() {
 function ensure_pristine_workspace() {
   local git_status unpushed_commits
   [ -z "${NO_PRISTINE_CHECK:-}" ] || return 0
-  git fetch --all --tags -q
+  # delete all local tags
+  git tag -l | xargs git tag -d > /dev/null
+  # fetch all and prune any deleted tag refs from your repository
+  git fetch --all --prune --tags -q
   git_status=$(git status -s)
   original_branch=$(git symbolic-ref --short HEAD)
   [ -z "$git_status" ] || { echo -e "Changes found:\n$git_status\n"; die "Workspace must be free of changes. See above and please correct."; }
