@@ -390,7 +390,7 @@ function exact_tag_exists() {
     tagCommit=$(git rev-list -n 1 "$tag")
     targetSha=$(git rev-parse "$branchOrTagPoint")
     if [[ "$tagCommit" == "$targetSha" ]]; then
-      return true
+      return 0
     else
       die "Tag '$tag' exists and points to a different commit:
       current tag sha = $tagCommit
@@ -398,7 +398,7 @@ function exact_tag_exists() {
       "
     fi
   fi
-  return false
+  return 1
 }
 
 function tag_branch() {
