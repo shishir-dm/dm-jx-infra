@@ -449,8 +449,13 @@ function tag_merge_base_on_develop_if_necessary() {
       if [ "${commitCnt}" -ne "${commitCnt}" ] 2>/dev/null; then
         die "The returned commitCnt '${commitCnt}' is not an integer."
       elif (( $commitCnt )); then
+        echo "Additional commits found on '${GF_DEVELOP}'. We can simply determine the TARGET_VERSION."
         TARGET_VERSION=$(run_cmd /showvariable SemVer)
       else
+        echo "SPECIAL CASE: No additional commits found on '${GF_DEVELOP}' so far. We need to
+        - create a dummy commit
+        - determine the TARGET_VERSION
+        - delete the dummy commit."
         # SPECIAL CASE: no commits on develop branch since creating the release
         #  This means the commit is identical and we will not see the "newly bumped"
         #  version. To solve this, we need to:
