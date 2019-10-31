@@ -279,6 +279,12 @@ function delete_branch() {
   gitCmd push origin :$branch
 }
 
+function all_delete() {
+  local workingBr branchPattern=$1
+  workingBr=$(ensure_single_branch "$branchPattern" true)
+  delete_branch "${workingBr}"
+}
+
 function release_create() {
   local eq=${1:-}
   local targetVersion latestReleaseTag
@@ -586,6 +592,9 @@ elif [[ $ARG == 'release_close' ]]; then
 elif [[ $ARG == 'release_rename' ]]; then
   ensure_pristine_workspace
   release_rename "$@"
+elif [[ $ARG == 'release_delete' ]]; then
+  ensure_pristine_workspace
+  all_delete "${GF_RELEASE_PATTERN}"
 elif [[ $ARG == 'hotfix_create' ]]; then
   ensure_pristine_workspace
   hotfix_create "$@"
@@ -601,7 +610,10 @@ elif [[ $ARG == 'hotfix_close' ]]; then
   all_close "${GF_HOTFIX_PATTERN}"
 elif [[ $ARG == 'hotfix_rename' ]]; then
   ensure_pristine_workspace
-  hotfix_rename "$@"
+  hotfix_rename
+elif [[ $ARG == 'hotfix_delete' ]]; then
+  ensure_pristine_workspace
+  all_delete "${GF_HOTFIX_PATTERN}"
 elif [[ $ARG == 'status' ]]; then
   ensure_pristine_workspace
   status "$@"

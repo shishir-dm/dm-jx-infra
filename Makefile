@@ -39,6 +39,10 @@ release_rename:  ## Rename the current release branch (for corrections)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
+release_delete:  ## Delete the current release branch
+
+	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
+
 hotfix_create:  ## Bump patch version and create hotfix branch   --> (OPTS: TARGET_VERSION=x.x.x, TARGET_SHA=...)
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
@@ -56,6 +60,10 @@ hotfix_close:  ## Merge develop into branch and create a PR if necessary
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
 hotfix_rename:  ## Rename the current hotfix branch
+
+	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
+
+hotfix_delete:  ## Delete the current hotfix branch
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
