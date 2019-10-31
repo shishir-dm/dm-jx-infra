@@ -27,6 +27,10 @@ release_finalise:  ## Tags branch with official 3 digit SemVer version
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
 
+release_quick:  ## Create a final release directly from a given TARGET_SHA
+
+	@$(ROOT)/scripts/version_util.sh $@ $(PWD)
+
 release_close:  ## Merge develop into branch and create a PR if necessary
 
 	@$(ROOT)/scripts/version_util.sh $@ $(PWD)

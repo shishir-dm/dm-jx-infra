@@ -6,6 +6,10 @@ function die() { echo "$@" 1>&2 ; exit 1; }
 
 function dieGracefully() { echo "$@" 1>&2 ; exit 0; }
 
+function test_final_semver() {
+  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]] || die "Value '$1' does not match ${2:-}x.x.x."
+}
+
 function test_semver() {
   [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-(alpha|beta)\.[0-9]{1,3})*$ ]] || die "Value '$1' does not match ${2:-}x.x.x."
 }
@@ -276,6 +280,7 @@ function delete_branch() {
 }
 
 function release_create() {
+  local eq=${1:-}
   local targetVersion latestReleaseTag
   ensure_single_branch "$GF_DEVELOP"
   ensure_no_branch "$GF_RELEASE_PATTERN"
@@ -390,6 +395,25 @@ function exact_tag_exists() {
     fi
   fi
   return 1
+}
+
+function release_quick() {
+  local tagVersion
+  # sanity checks
+  [ -n "${TARGET_SHA:-}" ] || die "TARGET_SHA must be set manually when running 'release_quick'."
+
+  # 1. tag the SHA with a final release
+  if [ -z "${TARGET_VERSION:-}" ]; then
+    checkout_branch "$GF_DEVELOP" -q
+    TARGET_VERSION="$(run_cmd /showvariable MajorMinorPatch)"
+  else
+    test_final_semver "${TARGET_VERSION}"
+  fi
+  develop_tag
+
+  # 2. create the branch from said SHA and version above
+  # add the 'eq' arg because we have already tagged develop
+  release_create 'eq'
 }
 
 function tag_branch() {
@@ -544,7 +568,7 @@ elif [[ $ARG == 'develop_tag' ]]; then
   develop_tag "$@"
 elif [[ $ARG == 'release_create' ]]; then
   ensure_pristine_workspace
-  release_create "$@"
+  release_create
 elif [[ $ARG == 'release_tag' ]]; then
   ensure_pristine_workspace
   tag_branch "$GF_RELEASE_PATTERN" "$@"
@@ -553,6 +577,9 @@ elif [[ $ARG == 'release_finalise' ]]; then
   set_final_target_version "$GF_RELEASE_PATTERN"
   tag_branch "$GF_RELEASE_PATTERN" "$@"
   tag_merge_base_on_develop_if_necessary "$GF_RELEASE_PATTERN"
+elif [[ $ARG == 'release_quick' ]]; then
+  ensure_pristine_workspace
+  release_quick
 elif [[ $ARG == 'release_close' ]]; then
   ensure_pristine_workspace
   all_close "${GF_RELEASE_PATTERN}"
