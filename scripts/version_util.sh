@@ -275,7 +275,7 @@ function create_branch() {
 function delete_branch() {
   local branch=$1
   confirm "Will delete branch '$branch' both locally and remote."
-  gitCmd branch -d $branch
+  gitCmd branch -D $branch
   gitCmd push origin :$branch
 }
 
