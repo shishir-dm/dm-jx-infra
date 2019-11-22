@@ -469,9 +469,6 @@ function tag_merge_base_on_develop_if_necessary() {
     elif (( $commitCnt )); then
       echo "Additional commits found on release branch."
 
-      # set new TARGET_SHA before tagging
-      TARGET_SHA="$mergeBaseSha"
-
       # Check that there has been a commit on develop since creating the release
       # branch.
       checkout_branch "${GF_DEVELOP}"
@@ -480,22 +477,25 @@ function tag_merge_base_on_develop_if_necessary() {
         die "The returned commitCnt '${commitCnt}' is not an integer."
       elif (( $commitCnt )); then
         echo "Additional commits found on '${GF_DEVELOP}'. We can simply determine the TARGET_VERSION."
-        TARGET_VERSION=$(run_cmd /showvariable SemVer)
       else
-        echo "SPECIAL CASE: No additional commits found on '${GF_DEVELOP}' so far. We need to
-        - create a dummy commit
-        - determine the TARGET_VERSION
-        - delete the dummy commit."
-        # SPECIAL CASE: no commits on develop branch since creating the release
-        #  This means the commit is identical and we will not see the "newly bumped"
-        #  version. To solve this, we need to:
-        #  - add a commit without pushing
-        #  - get the version to set TARGET_VERSION
-        #  - delete the commit again
-        git commit --no-gpg-sign --allow-empty -m "Empty commit"
-        TARGET_VERSION=$(run_cmd /showvariable SemVer)
-        git reset --hard HEAD~1
+        echo "SPECIAL CASE: No additional commits found on '${GF_DEVELOP}' so far.
+We need to create an empty commit to tag because:
+    - if we tag on the merge-base directly the release/hotfix branches will see it
+    - if gitversion sees a higher (semver style) version it will use it
+    - this leads to an incorrect version being detected
+
+So, nothing else for it - we'll have to create an empty commit!!!
+"
+        gitCmd commit --no-gpg-sign --allow-empty -m "Commit needed by gitversion - see scripts/version_util.sh"
+        gitCmd push
       fi
+      # set new TARGET_SHA before tagging
+      # the target has to be one commit after the merge-base commit
+      # the following command does this
+      # BTW: this is why we might have needed to add an empty commit above
+      TARGET_SHA=$(git --no-pager log --reverse --ancestry-path --format="%H" -n 1 "${mergeBaseSha}".."${GF_DEVELOP}")
+
+      TARGET_VERSION=$(run_cmd /showvariable SemVer)
       echo "Tagging '${GF_DEVELOP}' with '${TARGET_VERSION}' at the merge-base commit: ${mergeBaseSha}"
       develop_tag
     else
@@ -523,7 +523,7 @@ function empty_commit() {
   local currentBr dateStr
   currentBr=$(git symbolic-ref --short HEAD)
   dateStr=$(date '+%Y-%m-%d_%H:%M:%S')
-  gitCmd commit --allow-empty -m "Empty commit at $dateStr to '$currentBr'"
+  gitCmd commit --no-gpg-sign --allow-empty -m "Empty commit at $dateStr to '$currentBr'"
 }
 
 function finish {
