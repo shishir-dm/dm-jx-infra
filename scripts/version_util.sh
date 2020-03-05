@@ -424,6 +424,7 @@ function release_quick() {
 
 function tag_branch() {
   local workingBr=$1
+  local outputTag=${2:-}
   local tag tagInput tagVersion
   workingBr=$(ensure_single_branch "$workingBr" true)
   checkout_branch $workingBr
@@ -435,7 +436,7 @@ function tag_branch() {
   test_semver "$tag" v
   # ${tag:1} to remove the prefixing 'v'
   # Add 'eq' because the SemVer could be equal even if tag doesn't exist yet.
-  # ensure_target_version_gt_branch_version "${tag:1}" "$workingBr" "eq"
+  ensure_target_version_gt_branch_version "${tag:1}" "$workingBr" "eq"
   # if tag exists and points to the same commit, ignore...
   if exact_tag_exists; then
     echo "Tag exists AND points to the same commit. No need to add the tag. Ignoring..."
@@ -443,6 +444,9 @@ function tag_branch() {
     confirm "Will tag branch '$workingBr' with '$tag' at commit '$branchOrTagPoint'"
     gitCmd tag -am "Add tag '$tag' (performed by ${USER:-${USERNAME:-n/a}})" $tag $branchOrTagPoint
     gitCmd push origin $tag
+    if [ "$outputTag" = "true" ]; then
+      echo "$tag" > /tmp/NEW_TAG
+    fi
   fi
 }
 
@@ -577,11 +581,11 @@ elif [[ $ARG == 'release_create' ]]; then
   release_create
 elif [[ $ARG == 'release_tag' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_RELEASE_PATTERN" "$@"
+  tag_branch "$GF_RELEASE_PATTERN" "true"
 elif [[ $ARG == 'release_finalise' ]]; then
   ensure_pristine_workspace
   set_final_target_version "$GF_RELEASE_PATTERN"
-  tag_branch "$GF_RELEASE_PATTERN" "$@"
+  tag_branch "$GF_RELEASE_PATTERN" "true"
   tag_merge_base_on_develop_if_necessary "$GF_RELEASE_PATTERN"
 elif [[ $ARG == 'release_quick' ]]; then
   ensure_pristine_workspace
@@ -600,11 +604,11 @@ elif [[ $ARG == 'hotfix_create' ]]; then
   hotfix_create "$@"
 elif [[ $ARG == 'hotfix_tag' ]]; then
   ensure_pristine_workspace
-  tag_branch "$GF_HOTFIX_PATTERN" "$@"
+  tag_branch "$GF_HOTFIX_PATTERN" "true"
 elif [[ $ARG == 'hotfix_finalise' ]]; then
   ensure_pristine_workspace
   set_final_target_version "$GF_HOTFIX_PATTERN"
-  tag_branch "$GF_HOTFIX_PATTERN" "$@"
+  tag_branch "$GF_HOTFIX_PATTERN" "true"
 elif [[ $ARG == 'hotfix_close' ]]; then
   ensure_pristine_workspace
   all_close "${GF_HOTFIX_PATTERN}"
