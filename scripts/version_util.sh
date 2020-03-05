@@ -435,7 +435,7 @@ function tag_branch() {
   test_semver "$tag" v
   # ${tag:1} to remove the prefixing 'v'
   # Add 'eq' because the SemVer could be equal even if tag doesn't exist yet.
-  ensure_target_version_gt_branch_version "${tag:1}" "$workingBr" "eq"
+  # ensure_target_version_gt_branch_version "${tag:1}" "$workingBr" "eq"
   # if tag exists and points to the same commit, ignore...
   if exact_tag_exists; then
     echo "Tag exists AND points to the same commit. No need to add the tag. Ignoring..."
