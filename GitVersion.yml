@@ -1,3 +1,10 @@
+mode: ContinuousDelivery
 branches:
   develop:
     mode: ContinuousDelivery
+  release:
+    tag: rc
+  master:
+    regex: (stable|master)$
+ignore:
+  sha: []

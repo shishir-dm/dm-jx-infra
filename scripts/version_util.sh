@@ -11,7 +11,7 @@ function test_final_semver() {
 }
 
 function test_semver() {
-  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-(alpha|beta)\.[0-9]{1,3})*$ ]] || die "Value '$1' does not match ${2:-}x.x.x."
+  [[ $1 =~ ^${2:-}[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}(-(alpha|beta|rc)\.[0-9]{1,3})*$ ]] || die "Value '$1' does not match ${2:-}x.x.x."
 }
 
 function release_semver() {
@@ -496,7 +496,7 @@ So, nothing else for it - we'll have to create an empty commit!!!
       TARGET_SHA=$(git --no-pager log --reverse --ancestry-path --format="%H" -n 1 "${mergeBaseSha}".."${GF_DEVELOP}")
 
       TARGET_VERSION=$(run_cmd /showvariable SemVer)
-      echo "Tagging '${GF_DEVELOP}' with '${TARGET_VERSION}' at the merge-base commit: ${mergeBaseSha}"
+      echo "Tagging '${GF_DEVELOP}' with '${TARGET_VERSION}' at the merge-base commit + 1: ${TARGET_SHA}"
       develop_tag
     else
       echo "No commits found between release branch and the merge base. Will not tag '${GF_DEVELOP}' branch."
